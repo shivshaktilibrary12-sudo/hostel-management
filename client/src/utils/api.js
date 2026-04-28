@@ -1,0 +1,114 @@
+import axios from 'axios';
+
+// In production, API is on same server. In dev, proxy to localhost:5000
+const BASE_URL = process.env.NODE_ENV === 'production' ? '/api' : '/api';
+
+const api = axios.create({ baseURL: BASE_URL });
+
+// Attach JWT token to every request
+api.interceptors.request.use((config) => {
+  const token = localStorage.getItem('hm_token');
+  if (token) config.headers.Authorization = `Bearer ${token}`;
+  return config;
+}, (error) => Promise.reject(error));
+
+// Handle auth errors globally
+api.interceptors.response.use(
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      localStorage.removeItem('hm_token');
+      localStorage.removeItem('hm_user');
+      window.location.href = '/';
+    }
+    return Promise.reject(err);
+  }
+);
+
+export const authAPI = {
+  login: (data)           => api.post('/auth/login', data),
+  me: ()                  => api.get('/auth/me'),
+  changePassword: (data)  => api.post('/auth/change-password', data),
+  getUsers: ()            => api.get('/auth/users'),
+  createUser: (data)      => api.post('/auth/users', data),
+  toggleUser: (id)        => api.put(`/auth/users/${id}/toggle`),
+  deleteUser: (id)        => api.delete(`/auth/users/${id}`),
+  getUserActivity: (id)   => api.get(`/auth/users/${id}/activity`),
+};
+
+export const dashboardAPI = {
+  get: (params) => api.get('/dashboard', { params }),
+};
+
+export const hostelAPI = {
+  getAll: ()           => api.get('/hostels'),
+  create: (data)       => api.post('/hostels', data),
+  update: (id, data)   => api.put(`/hostels/${id}`, data),
+};
+
+export const roomsAPI = {
+  getAll: (params) => api.get('/rooms', { params }),
+  getOne: (n)      => api.get(`/rooms/${n}`),
+};
+
+export const membersAPI = {
+  getAll: (params)         => api.get('/members', { params }),
+  getById: (id)            => api.get(`/members/${id}`),
+  getByRoom: (n)           => api.get(`/members/room/${n}`),
+  getNextId: ()            => api.get('/members/next-id'),
+  create: (data)           => api.post('/members', data),
+  update: (id, data)       => api.put(`/members/${id}`, data),
+  vacate: (id, reason)     => api.post(`/members/${id}/vacate`, { reason }),
+  delete: (id)             => api.delete(`/members/${id}`),
+  getArchived: (params)    => api.get('/members/archived', { params }),
+  restoreArchived: (id)    => api.post(`/members/archived/${id}/restore`),
+  deleteArchived: (id)     => api.delete(`/members/archived/${id}`),
+};
+
+export const receiptsAPI = {
+  getAll: (params)         => api.get('/receipts', { params }),
+  getByRoom: (n)           => api.get(`/receipts/room/${n}`),
+  getRoomSummary: (n)      => api.get(`/receipts/room/${n}/summary`),
+  getNextNumbers: ()       => api.get('/receipts/next-numbers'),
+  create: (data)           => api.post('/receipts', data),
+  delete: (id)             => api.delete(`/receipts/${id}`),
+};
+
+export const electricAPI = {
+  getAll: (params)   => api.get('/electric', { params }),
+  getByRoom: (n)     => api.get(`/electric/room/${n}`),
+  getLastByRoom: (n) => api.get(`/electric/room/${n}/last`),
+  create: (data)     => api.post('/electric', data),
+  update: (id, data) => api.put(`/electric/${id}`, data),
+  delete: (id)       => api.delete(`/electric/${id}`),
+};
+
+export const salaryAPI = {
+  getAll: (params)   => api.get('/salary', { params }),
+  create: (data)     => api.post('/salary', data),
+  update: (id, data) => api.put(`/salary/${id}`, data),
+  delete: (id)       => api.delete(`/salary/${id}`),
+};
+
+export const notificationsAPI = {
+  getAll: (params)  => api.get('/notifications', { params }),
+  markRead: (id)    => api.put(`/notifications/${id}/read`),
+  markAllRead: ()   => api.put('/notifications/read-all'),
+  getUnreadCount: ()=> api.get('/notifications/unread-count'),
+};
+
+export const auditAPI = {
+  getAll: (params) => api.get('/audit', { params }),
+};
+
+export const backupAPI = {
+  trigger: ()       => api.post('/backup/trigger'),
+  download: ()      => api.get('/backup/download', { responseType: 'blob' }),
+  list: ()          => api.get('/backup/list'),
+};
+
+export const syncAPI = {
+  sheets: () => api.post('/sync-sheets'),
+};
+
+export default api;
