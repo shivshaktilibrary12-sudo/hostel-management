@@ -112,3 +112,49 @@ export const syncAPI = {
 };
 
 export default api;
+
+// ── WhatsApp Messaging ────────────────────────────────────────────────────────
+export const whatsapp = {
+  sendReceipt: (mobile, receipt) => {
+    const num = `91${String(mobile).replace(/\D/g,'').replace(/^91/,'')}`;
+    const lines = [
+      `🏠 *HOSTEL RECEIPT*`,`━━━━━━━━━━━━━━━━━━`,
+      `📋 Bill No: ${receipt.billNumber||receipt.receiptNumber}`,
+      `📅 Date: ${new Date(receipt.receiptDate).toLocaleDateString('en-IN')}`,``,
+      `👤 Name: ${receipt.memberName}`,`🚪 Room No: ${receipt.roomNumber}`,
+      `💳 Type: ${(receipt.packageName||'').toUpperCase()}`,``,
+      `💰 Amount: ₹${receipt.totalAmount}`,
+      receipt.amountInWords ? `   (${receipt.amountInWords})` : '',
+      `💵 Mode: ${(receipt.modeOfPayment||'').toUpperCase()}`,
+      receipt.notes ? `📝 Notes: ${receipt.notes}` : '',``,`✅ Payment received. Thank you!`,
+    ].filter(Boolean).join('\n');
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(lines)}`, '_blank');
+  },
+  sendFinalBill: (mobile, memberName, roomNo, grandTotal, breakdown) => {
+    const num = `91${String(mobile).replace(/\D/g,'').replace(/^91/,'')}`;
+    const lines = [
+      `🏠 *FINAL BILLING STATEMENT*`,`━━━━━━━━━━━━━━━━━━`,
+      `👤 ${memberName}`,`🚪 Room No: ${roomNo}`,``,
+      `📊 *Breakdown:*`,
+      breakdown.rent      ? `  Rent:     ₹${breakdown.rent}`      : '',
+      breakdown.advance   ? `  Advance:  ₹${breakdown.advance}`   : '',
+      breakdown.electric  ? `  Electric: ₹${breakdown.electric}`  : '',
+      breakdown.other     ? `  Other:    ₹${breakdown.other}`     : '',
+      ``,`💰 *Grand Total: ₹${grandTotal}*`,``,
+      `Please settle all dues before vacating.`,`Thank you 🙏`,
+    ].filter(Boolean).join('\n');
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(lines)}`, '_blank');
+  },
+  sendReminder: (mobile, name, roomNo, amount, type = 'rent') => {
+    const num = `91${String(mobile).replace(/\D/g,'').replace(/^91/,'')}`;
+    const msg = [`🏠 *HOSTEL REMINDER*`,``,
+      `Dear *${name}*,`,``,
+      `This is a reminder for your *${type.toUpperCase()}* payment of *₹${amount}* for Room No. *${roomNo}*.`,
+      ``,`Please pay at your earliest convenience.`,``,`Thank you 🙏`].join('\n');
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
+  },
+  sendCustom: (mobile, message) => {
+    const num = `91${String(mobile).replace(/\D/g,'').replace(/^91/,'')}`;
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(message)}`, '_blank');
+  },
+};
