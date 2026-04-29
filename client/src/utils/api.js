@@ -47,8 +47,10 @@ export const hostelAPI = {
 };
 
 export const roomsAPI = {
-  getAll: (params) => api.get('/rooms', { params }),
-  getOne: (n)      => api.get(`/rooms/${n}`),
+  getAll:      (params) => api.get('/rooms', { params }),
+  getOne:      (n)      => api.get(`/rooms/${n}`),
+  update:      (n, data)=> api.put(`/rooms/${n}`, data),
+  updateAll:   (rooms)  => api.put('/rooms', { rooms }),
 };
 
 export const membersAPI = {

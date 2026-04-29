@@ -81,6 +81,7 @@ try {
 }
 
 const Member   = require('./models/Member');
+require('./models/Room'); // Register Room model
 const Receipt  = require('./models/Receipt');
 const Electric = require('./models/Electric');
 const Salary   = require('./models/Salary');
