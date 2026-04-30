@@ -182,30 +182,64 @@ export default function Dashboard() {
       {/* Overdue Modal */}
       {showOverdue && (
         <Modal title="🚨 Overdue Members" onClose={() => setShowOverdue(false)}>
-          {stats.overdueMembers.map(m => (
-            <div key={m._id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{m.name}</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text3)' }}>Room {m.roomNumber} · Due: {new Date(m.roomLeavingDate).toLocaleDateString('en-IN')}</div>
+          {stats.overdueMembers.map(m => {
+            const daysOverdue = Math.floor((new Date() - new Date(m.roomLeavingDate)) / (1000*60*60*24));
+            return (
+            <div key={m._id} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.95rem' }}>{m.name}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text3)', marginTop: 2 }}>
+                    🚪 Room {m.roomNumber} &nbsp;·&nbsp; 📱 {m.mobileNo || 'No mobile'} &nbsp;·&nbsp;
+                    <span style={{ color: 'var(--danger)', fontWeight: 600 }}>Overdue by {daysOverdue} day{daysOverdue !== 1 ? 's' : ''}</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text3)', marginTop: 1 }}>
+                    Plan ended: {new Date(m.roomLeavingDate).toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' })}
+                    {m.rent ? ` · Room Rent: ₹${m.rent.toLocaleString('en-IN')}` : ''}
+                  </div>
+                </div>
+                {m.mobileNo && (
+                  <button style={{ background: '#25d366', color: 'white', border: 'none', borderRadius: 6, padding: '7px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, flexShrink: 0 }}
+                    onClick={() => wa.sendReminder(m.mobileNo, m.name, m.roomNumber, m.rent || 0, 'final dues')}>
+                    📱 WhatsApp
+                  </button>
+                )}
               </div>
-              {m.mobileNo && <button style={{ background: '#25d366', color: 'white', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }} onClick={() => wa.sendReminder(m.mobileNo, m.name, m.roomNumber, m.rent || 0, 'final dues')}>📱 Remind</button>}
             </div>
-          ))}
+            );
+          })}
         </Modal>
       )}
 
       {/* Expiring Modal */}
       {showExpiring && (
         <Modal title="⏰ Expiring Soon" onClose={() => setShowExpiring(false)}>
-          {stats.expiringMembers.map(m => (
-            <div key={m._id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{m.name}</div>
-                <div style={{ fontSize: '0.78rem', color: 'var(--text3)' }}>Room {m.roomNumber} · Leaves: {new Date(m.roomLeavingDate).toLocaleDateString('en-IN')}</div>
+          {stats.expiringMembers.map(m => {
+            const daysLeft = Math.ceil((new Date(m.roomLeavingDate) - new Date()) / (1000*60*60*24));
+            return (
+            <div key={m._id} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.95rem' }}>{m.name}</div>
+                  <div style={{ fontSize: '0.78rem', color: 'var(--text3)', marginTop: 2 }}>
+                    🚪 Room {m.roomNumber} &nbsp;·&nbsp; 📱 {m.mobileNo || 'No mobile'} &nbsp;·&nbsp;
+                    <span style={{ color: daysLeft <= 3 ? 'var(--danger)' : 'var(--accent)', fontWeight: 600 }}>{daysLeft} day{daysLeft !== 1 ? 's' : ''} left</span>
+                  </div>
+                  <div style={{ fontSize: '0.75rem', color: 'var(--text3)', marginTop: 1 }}>
+                    Plan ends: {new Date(m.roomLeavingDate).toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' })}
+                    {m.rent ? ` · Room Rent: ₹${m.rent.toLocaleString('en-IN')}` : ''}
+                  </div>
+                </div>
+                {m.mobileNo && (
+                  <button style={{ background: '#25d366', color: 'white', border: 'none', borderRadius: 6, padding: '7px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, flexShrink: 0 }}
+                    onClick={() => wa.sendReminder(m.mobileNo, m.name, m.roomNumber, m.rent || 0, 'stay renewal')}>
+                    📱 WhatsApp
+                  </button>
+                )}
               </div>
-              {m.mobileNo && <button style={{ background: '#25d366', color: 'white', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }} onClick={() => wa.sendReminder(m.mobileNo, m.name, m.roomNumber, m.rent || 0, 'stay renewal')}>📱 Remind</button>}
             </div>
-          ))}
+            );
+          })}
         </Modal>
       )}
 

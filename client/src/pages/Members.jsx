@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { membersAPI, whatsapp as wa } from '../utils/api';
+import { membersAPI, roomsAPI, whatsapp as wa } from '../utils/api';
 import { useToast } from '../context/ToastContext';
 
 const EMPTY = {
@@ -413,10 +413,12 @@ function MemberPrintCard({ member }) {
       {row("Father's Name", member.fathersName)}
       {row("Father's Mobile", member.fathersMobileNo)}
       {row("Father's Occupation", member.fathersOccupation)}
-      {row('Relative Name', member.permanentAddressRelativeName)}
-      {row('Relative Mobile', member.permanentAddressRelativeMobile)}
-      {row('Local Relative', member.localRelativeName)}
-      {row('Local Mobile', member.localRelativeMobile)}
+      {row('Permanent Address Relative Name', member.permanentAddressRelativeName)}
+      {row('Permanent Address Relative Mobile', member.permanentAddressRelativeMobile)}
+      {row('Permanent Address Relative Address', member.permanentAddressRelativeAddress)}
+      {row('Local Relative Name', member.localRelativeName)}
+      {row('Local Relative Mobile', member.localRelativeMobile)}
+      {row('Local Relative Address', member.localRelativeAddress)}
       {row('Room Number', member.roomNumber ? `Room ${member.roomNumber}` : '—')}
       {row('Monthly Rent', member.rent ? `₹${member.rent}` : '—')}
       {row('Police Form', member.policeFormVerified ? 'Verified ✓' : 'Pending')}

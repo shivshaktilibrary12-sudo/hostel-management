@@ -76,10 +76,25 @@ export default function Receipts() {
     setShowModal(true);
   };
 
-  const handleRoomChange = (roomNo) => {
-    setForm(p => ({ ...p, roomNumber: roomNo, memberName: '', memberMobile: '', memberId: '', fromDate: '' }));
+  const handleRoomChange = async (roomNo) => {
+    setForm(p => ({ ...p, roomNumber: roomNo, memberName: '', memberMobile: '', memberId: '', fromDate: '', totalAmount: '' }));
     if (!roomNo) { setRoomMembers([]); return; }
-    setRoomMembers(members.filter(m => String(m.roomNumber) === String(roomNo) && m.isActive !== false));
+    const rm = members.filter(m => String(m.roomNumber) === String(roomNo) && m.isActive !== false);
+    setRoomMembers(rm);
+    // Auto-fill rent from room config
+    try {
+      const r = await roomsAPI.getOne(roomNo);
+      const rd = r.data;
+      if (rd && rd.rent) {
+        setForm(p => ({
+          ...p,
+          roomNumber: roomNo,
+          totalAmount: String(rd.rent),
+          // Auto-set package to rent
+          packageName: p.packageName || 'rent',
+        }));
+      }
+    } catch(e) {}
   };
 
   const handleMemberSelect = (name) => {

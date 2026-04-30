@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { membersAPI } from '../utils/api';
+import { membersAPI, roomsAPI } from '../utils/api';
 import { useToast } from '../context/ToastContext';
 
 export default function RoomDetails() {
@@ -176,7 +176,25 @@ export default function RoomDetails() {
               <div className="form-grid">
                 <div className="form-group">
                   <label>Room Number</label>
-                  <select value={form.roomNumber} onChange={e=>setForm(p=>({...p,roomNumber:e.target.value}))}>
+                  <select value={form.roomNumber} onChange={async e => {
+                    const roomNo = e.target.value;
+                    setForm(p => ({ ...p, roomNumber: roomNo }));
+                    if (roomNo) {
+                      try {
+                        const r = await roomsAPI.getOne(roomNo);
+                        const rd = r.data;
+                        if (rd) {
+                          setForm(p => ({
+                            ...p,
+                            roomNumber: roomNo,
+                            rent: rd.rent || p.rent || '',
+                            advance: rd.advance || p.advance || '',
+                            numberOfMembers: rd.memberCount >= 0 ? Math.max(1, rd.memberCount + 1) : p.numberOfMembers,
+                          }));
+                        }
+                      } catch(e) {}
+                    }
+                  }}>
                     <option value="">Select Room</option>
                     {Array.from({length:20},(_,i)=>i+1).map(n=><option key={n} value={n}>Room {n}</option>)}
                   </select>
@@ -187,8 +205,14 @@ export default function RoomDetails() {
                     {[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}</option>)}
                   </select>
                 </div>
-                <div className="form-group"><label>Monthly Rent (₹)</label><input value={form.rent} onChange={e=>setForm(p=>({...p,rent:e.target.value}))} type="number" /></div>
-                <div className="form-group"><label>Advance (₹)</label><input value={form.advance} onChange={e=>setForm(p=>({...p,advance:e.target.value}))} type="number" /></div>
+                <div className="form-group">
+                  <label>Monthly Rent (₹) <span style={{fontSize:'0.7rem',color:'var(--text3)',fontWeight:400,textTransform:'none'}}>— auto-filled from room config, editable</span></label>
+                  <input value={form.rent} onChange={e=>setForm(p=>({...p,rent:e.target.value}))} type="number" placeholder="Auto-filled from Room settings" />
+                </div>
+                <div className="form-group">
+                  <label>Advance (₹) <span style={{fontSize:'0.7rem',color:'var(--text3)',fontWeight:400,textTransform:'none'}}>— cumulative for the room</span></label>
+                  <input value={form.advance} onChange={e=>setForm(p=>({...p,advance:e.target.value}))} type="number" placeholder="Auto-filled from Room settings" />
+                </div>
                 <div className="form-group"><label>Room Join Date</label><input value={form.roomJoinDate} onChange={e=>setForm(p=>({...p,roomJoinDate:e.target.value}))} type="date" /></div>
                 <div className="form-group"><label>Room Leaving Date</label><input value={form.roomLeavingDate} onChange={e=>setForm(p=>({...p,roomLeavingDate:e.target.value}))} type="date" /></div>
                 <div className="form-group full">

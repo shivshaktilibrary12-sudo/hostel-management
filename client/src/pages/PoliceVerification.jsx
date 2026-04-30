@@ -8,7 +8,7 @@ export default function PoliceVerification() {
   const [thana, setThana] = useState('थाना संयोगितागंज');
   const [address, setAddress] = useState('1-B शिवकृपा कॉलोनी साजन नगर, इंदौर');
   const [officeAddress, setOfficeAddress] = useState('');
-  const [duration, setDuration] = useState('');
+  const [duration, setDuration] = useState('1 वर्ष');
   const [ownerMobile, setOwnerMobile] = useState('');
   const printRef = useRef();
 
@@ -18,6 +18,12 @@ export default function PoliceVerification() {
     setSelectedMemberId(id);
     const m = members.find(x => x._id === id);
     setSelectedMember(m || null);
+    // Auto-fill office address from member occupation
+    if (m?.studentOccupation) {
+      setOfficeAddress(m.studentOccupation);
+    } else {
+      setOfficeAddress('');
+    }
   };
 
   const doPrint = () => {
@@ -67,7 +73,7 @@ export default function PoliceVerification() {
           </div>
           <div className="form-group">
             <label>कार्यालय का पता व फोन / Office Address & Phone</label>
-            <input value={officeAddress} onChange={e=>setOfficeAddress(e.target.value)} placeholder="Office address and phone number" />
+            <input value={officeAddress} onChange={e=>setOfficeAddress(e.target.value)} placeholder="Auto-filled from occupation — edit if needed" />
           </div>
           <div className="form-group">
             <label>किरायेदारी की संभावित अवधि / Expected Duration</label>
@@ -147,7 +153,7 @@ function PoliceForm({ member, thana, address, officeAddress, duration, ownerMobi
 
       <p><strong>6. मकान किराये से दिलाने वाले व्यक्ति का नाम एवं पता –</strong> स्वयं</p>
 
-      <p><strong>7. किरायेदार जहाँ काम करता है कार्यालय का पता व फोन नं. –</strong> {s(officeAddress)}</p>
+      <p><strong>7. किरायेदार जहाँ काम करता है / व्यवसाय व कार्यालय का पता –</strong> {s(officeAddress)}</p>
 
       <p>
         <strong>8. मकान किराये पर देने की दिनांक –</strong> {fmt(member?.admissionDate || member?.roomJoinDate)} &nbsp;&nbsp;

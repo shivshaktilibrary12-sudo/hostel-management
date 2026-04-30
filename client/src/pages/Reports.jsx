@@ -94,6 +94,95 @@ export default function Reports() {
 
   const maxRooms = Math.max(...members.filter(m => m.roomNumber).map(m => m.roomNumber), 20);
 
+
+  const printReport = (title, tableContent) => {
+    const w = window.open('', '_blank');
+    w.document.write(`<html><head><title>${title}</title>`);
+    w.document.write('<link href="https://fonts.googleapis.com/css2?family=Noto+Sans:wght@400;600;700&display=swap" rel="stylesheet">');
+    w.document.write('<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:"Noto Sans",sans-serif;padding:24px;color:#111;font-size:12px;}h1{font-size:1.3rem;margin-bottom:4px;}table{width:100%;border-collapse:collapse;margin-top:16px;}th{background:#1e2535;color:#f0a500;padding:7px 10px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.06em;}td{padding:7px 10px;border-bottom:1px solid #eee;font-size:12px;}.summary{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin:16px 0;}.card{background:#f8f8f8;padding:12px;border-radius:6px;border:1px solid #ddd;}.card-label{font-size:10px;color:#666;text-transform:uppercase;}.card-value{font-size:1.2rem;font-weight:700;margin-top:3px;color:#111;}@media print{@page{margin:8mm;size:A4;}}</style>`);
+    w.document.write('</head><body>');
+    w.document.write('<h1>' + title + '</h1>');
+    w.document.write('<div style="font-size:11px;color:#666;margin-bottom:8px;">Generated: ' + new Date().toLocaleDateString('en-IN', {day:'2-digit',month:'long',year:'numeric'}) + ' · Hostel Manager</div>');
+    w.document.write(tableContent);
+    w.document.write('</body></html>');
+    w.document.close();
+    setTimeout(() => w.print(), 600);
+  };
+
+  const printOverview = () => {
+    const html = \`
+      <div class="summary">
+        <div class="card"><div class="card-label">Total Income</div><div class="card-value">₹\${fmt(totalIncome)}</div></div>
+        <div class="card"><div class="card-label">Cash</div><div class="card-value">₹\${fmt(cashTotal)}</div></div>
+        <div class="card"><div class="card-label">Online</div><div class="card-value">₹\${fmt(onlineTotal)}</div></div>
+        <div class="card"><div class="card-label">Net Balance</div><div class="card-value">₹\${fmt(netBalance)}</div></div>
+      </div>
+      <table>
+        <thead><tr><th>Room</th><th>Members</th><th>Total Paid</th></tr></thead>
+        <tbody>\${[...new Set(members.filter(m=>m.roomNumber).map(m=>m.roomNumber))].sort((a,b)=>a-b).map(rn => {
+          const rMem = members.filter(m => m.roomNumber === rn);
+          const rRec = receipts.filter(r => r.roomNumber === rn);
+          const total = rRec.reduce((s,r) => s+(r.totalAmount||0), 0);
+          return \`<tr><td>Room \${rn}</td><td>\${rMem.map(m=>m.name).join(', ')}</td><td>₹\${total.toLocaleString('en-IN')}</td></tr>\`;
+        }).join('')}</tbody>
+      </table>
+    \`;
+    printReport('Room Overview Report', html);
+  };
+
+  const printPayments = () => {
+    const html = \`
+      <table>
+        <thead><tr><th>Date</th><th>Bill No</th><th>Room</th><th>Member</th><th>Type</th><th>Mode</th><th>Amount</th></tr></thead>
+        <tbody>\${filteredReceipts.map(r => \`<tr>
+          <td>\${new Date(r.receiptDate).toLocaleDateString('en-IN')}</td>
+          <td>\${r.billNumber||''}</td>
+          <td>Room \${r.roomNumber||''}</td>
+          <td>\${r.memberName||''}</td>
+          <td>\${r.packageName||''}</td>
+          <td>\${r.modeOfPayment||''}</td>
+          <td>₹\${(r.totalAmount||0).toLocaleString('en-IN')}</td>
+        </tr>\`).join('')}</tbody>
+      </table>
+    \`;
+    printReport('Payment Report', html);
+  };
+
+  const printMembers = () => {
+    const html = \`
+      <table>
+        <thead><tr><th>Member ID</th><th>Name</th><th>Mobile</th><th>Room</th><th>Join Date</th><th>Leaving Date</th><th>Police Form</th></tr></thead>
+        <tbody>\${activeMembers.map(m => \`<tr>
+          <td>\${m.memberId||'—'}</td>
+          <td>\${m.name}</td>
+          <td>\${m.mobileNo}</td>
+          <td>Room \${m.roomNumber||'—'}</td>
+          <td>\${m.roomJoinDate ? new Date(m.roomJoinDate).toLocaleDateString('en-IN') : '—'}</td>
+          <td>\${m.roomLeavingDate ? new Date(m.roomLeavingDate).toLocaleDateString('en-IN') : '—'}</td>
+          <td>\${m.policeFormVerified ? 'Verified' : 'Pending'}</td>
+        </tr>\`).join('')}</tbody>
+      </table>
+    \`;
+    printReport('All Members Report', html);
+  };
+
+  const printExpenses = () => {
+    const html = \`
+      <table>
+        <thead><tr><th>Employee</th><th>Role</th><th>Basic</th><th>Allowances</th><th>Deductions</th><th>Net</th><th>Month</th></tr></thead>
+        <tbody>\${salary.map(s => \`<tr>
+          <td>\${s.employeeName||''}</td><td>\${s.role||''}</td>
+          <td>₹\${(s.basicSalary||0).toLocaleString('en-IN')}</td>
+          <td>₹\${(s.allowances||0).toLocaleString('en-IN')}</td>
+          <td>₹\${(s.deductions||0).toLocaleString('en-IN')}</td>
+          <td>₹\${(s.netSalary||0).toLocaleString('en-IN')}</td>
+          <td>\${s.month||''}</td>
+        </tr>\`).join('')}</tbody>
+      </table>
+    \`;
+    printReport('Salary & Expenses Report', html);
+  };
+
   return (
     <div>
       <div className="page-header">
@@ -105,7 +194,7 @@ export default function Reports() {
         </div>
       </div>
 
-      <div className="tabs">
+      <div className="tabs" style={{marginBottom:0}}>
         {['overview', 'payments', 'rooms', 'members', 'export'].map(t => (
           <button key={t} className={`tab ${tab === t ? 'active' : ''}`} onClick={() => setTab(t)}>
             {t.charAt(0).toUpperCase() + t.slice(1)}
@@ -115,6 +204,7 @@ export default function Reports() {
 
       {tab === 'overview' && (
         <div>
+          <div style={{display:'flex',justifyContent:'flex-end',marginBottom:12}}><button className="btn btn-secondary btn-sm" onClick={printOverview}>🖨 Print Overview</button></div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 12, marginBottom: 20 }}>
             <StatCard label="Total Income" value={`₹${fmt(totalIncome)}`} color="var(--success)" />
             <StatCard label="Total Expenditure" value={`₹${fmt(totalExpenditure)}`} color="var(--danger)" />
@@ -168,6 +258,7 @@ export default function Reports() {
 
       {tab === 'payments' && (
         <div className="card">
+          <div style={{display:'flex',justifyContent:'flex-end',marginBottom:12}}><button className="btn btn-secondary btn-sm" onClick={printPayments}>🖨 Print Report</button></div>
           <div style={{ display: 'flex', gap: 8, marginBottom: 14, flexWrap: 'wrap', alignItems: 'center' }}>
             <input value={filters.search} onChange={e => setFilters(p => ({ ...p, search: e.target.value }))} placeholder="Search member / bill..." style={selStyle} />
             <select style={selStyle} value={filters.room} onChange={e => setFilters(p => ({ ...p, room: e.target.value }))}>
@@ -221,6 +312,7 @@ export default function Reports() {
 
       {tab === 'rooms' && (
         <div className="card">
+          <div style={{display:'flex',justifyContent:'flex-end',marginBottom:12}}><button className="btn btn-secondary btn-sm" onClick={() => printReport('Room Details Report', document.querySelector('[data-room-table]')?.outerHTML || '<p>No data</p>')}>🖨 Print Report</button></div>
           <div className="table-wrap">
             <table>
               <thead><tr><th>Room</th><th>Members</th><th>Rent/mo</th><th>Total Rent</th><th>Electric</th><th>Advance</th><th>Total Paid</th><th>Receipts</th></tr></thead>
@@ -250,6 +342,7 @@ export default function Reports() {
 
       {tab === 'members' && (
         <div className="card">
+          <div style={{display:'flex',justifyContent:'flex-end',marginBottom:12}}><button className="btn btn-secondary btn-sm" onClick={printMembers}>🖨 Print Members</button></div>
           <div className="table-wrap">
             <table>
               <thead><tr><th>ID</th><th>Name</th><th>Mobile</th><th>Room</th><th>Join</th><th>Leaving</th><th>Rent</th><th>Police</th><th>Status</th></tr></thead>
