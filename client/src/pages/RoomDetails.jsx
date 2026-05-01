@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { membersAPI, roomsAPI } from '../utils/api';
+import { membersAPI, roomsAPI, whatsapp as wa } from '../utils/api';
 import { useToast } from '../context/ToastContext';
 
 export default function RoomDetails() {
@@ -66,33 +66,48 @@ export default function RoomDetails() {
     <div className="table-wrap">
       <table>
         <thead>
-          <tr><th>Name</th><th>Room</th><th>Rent</th><th>Advance</th><th>Join Date</th><th>Leaving Date</th><th>Police</th><th>Actions</th></tr>
+          <tr><th>Name</th><th>Mobile</th><th>Room</th><th>Rent</th><th>Advance</th><th>Join Date</th><th>Leaving Date</th><th>Police</th><th>Actions</th></tr>
         </thead>
         <tbody>
           {list.length === 0 ? (
-            <tr><td colSpan={8}><div className="empty-state"><div className="empty-icon">{isDue?'⚠️':'📋'}</div><p>{isDue?'No overdue members':'No members'}</p></div></td></tr>
-          ) : list.map(m => (
+            <tr><td colSpan={9}><div className="empty-state"><div className="empty-icon">{isDue?'⚠️':'📋'}</div><p>{isDue?'No overdue members':'No members'}</p></div></td></tr>
+          ) : list.map(m => {
+            const daysOverdue = isDue && m.roomLeavingDate
+              ? Math.floor((new Date() - new Date(m.roomLeavingDate)) / (1000*60*60*24))
+              : 0;
+            return (
             <tr key={m._id}>
               <td style={{color:'var(--text)',fontWeight:500}}>{m.name}</td>
+              <td style={{fontSize:'0.82rem'}}>{m.mobileNo || '—'}</td>
               <td>{m.roomNumber ? <span className="badge badge-blue">Room {m.roomNumber}</span> : '—'}</td>
               <td>₹{m.rent||0}</td>
               <td>₹{m.advance||0}</td>
               <td>{m.roomJoinDate ? new Date(m.roomJoinDate).toLocaleDateString('en-IN') : '—'}</td>
               <td style={{color:isDue?'var(--danger)':'var(--text2)'}}>
                 {m.roomLeavingDate ? new Date(m.roomLeavingDate).toLocaleDateString('en-IN') : '—'}
-                {isDue && ' ⚠️'}
+                {isDue && daysOverdue > 0 && <span style={{fontSize:'0.7rem',display:'block',color:'var(--danger)'}}>({daysOverdue}d overdue)</span>}
               </td>
               <td><span className={`badge ${m.policeFormVerified?'badge-green':'badge-red'}`}>{m.policeFormVerified?'Done':'Pending'}</span></td>
               <td>
-                <div style={{display:'flex',gap:6}}>
+                <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
                   <button className="btn btn-secondary btn-xs" onClick={() => open(m)}>Edit</button>
-                  <button className="btn btn-xs" style={{background:'rgba(243,156,18,0.15)',color:'#f39c12',border:'1px solid rgba(243,156,18,0.3)',padding:'4px 8px',borderRadius:4,cursor:'pointer',fontSize:'0.75rem',fontFamily:'Rajdhani',fontWeight:600}} onClick={()=>{setShowVacateModal(m);setVacateReason('Plan expired / Left hostel');}}>
+                  {isDue && m.mobileNo && (
+                    <button
+                      onClick={() => wa.sendReminder(m.mobileNo, m.name, m.roomNumber, m.rent || 0, 'rent dues')}
+                      style={{background:'#25d366',color:'white',border:'none',borderRadius:4,padding:'4px 8px',cursor:'pointer',fontSize:'0.72rem',fontWeight:600,whiteSpace:'nowrap'}}
+                      title={`Send WhatsApp reminder to ${m.mobileNo}`}
+                    >
+                      📱 WhatsApp
+                    </button>
+                  )}
+                  <button className="btn btn-xs" style={{background:'rgba(243,156,18,0.15)',color:'#f39c12',border:'1px solid rgba(243,156,18,0.3)',padding:'4px 8px',borderRadius:4,cursor:'pointer',fontSize:'0.72rem',fontFamily:'Rajdhani',fontWeight:600}} onClick={()=>{setShowVacateModal(m);setVacateReason('Plan expired / Left hostel');}}>
                     📦 Vacate
                   </button>
                 </div>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>

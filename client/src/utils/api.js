@@ -149,10 +149,20 @@ export const whatsapp = {
   },
   sendReminder: (mobile, name, roomNo, amount, type = 'rent') => {
     const num = `91${String(mobile).replace(/\D/g,'').replace(/^91/,'')}`;
-    const msg = [`🏠 *HOSTEL REMINDER*`,``,
+    const today = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' });
+    const msg = [
+      `🏠 *HOSTEL PAYMENT REMINDER*`,
+      `━━━━━━━━━━━━━━━━━━`,
+      `📅 Date: ${today}`,``,
       `Dear *${name}*,`,``,
-      `This is a reminder for your *${type.toUpperCase()}* payment of *₹${amount}* for Room No. *${roomNo}*.`,
-      ``,`Please pay at your earliest convenience.`,``,`Thank you 🙏`].join('\n');
+      `This is a friendly reminder that your *${type.toUpperCase()}* payment is pending.`,``,
+      amount ? `💰 Amount Due: *₹${Number(amount).toLocaleString('en-IN')}*` : '',
+      `🚪 Room No: *${roomNo}*`,``,
+      `Please clear your dues at the earliest to avoid any inconvenience.`,``,
+      `⚠️ Late payment attracts a fine of ₹50/- per day.`,``,
+      `Thank you 🙏`,
+      `— Hostel Management`,
+    ].filter(Boolean).join('\n');
     window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
   },
   sendCustom: (mobile, message) => {

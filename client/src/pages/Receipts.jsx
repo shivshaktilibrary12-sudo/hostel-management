@@ -76,25 +76,40 @@ export default function Receipts() {
     setShowModal(true);
   };
 
+  const [roomConfig, setRoomConfig] = useState(null); // stores room rent/advance config
+
   const handleRoomChange = async (roomNo) => {
     setForm(p => ({ ...p, roomNumber: roomNo, memberName: '', memberMobile: '', memberId: '', fromDate: '', totalAmount: '' }));
+    setRoomConfig(null);
     if (!roomNo) { setRoomMembers([]); return; }
     const rm = members.filter(m => String(m.roomNumber) === String(roomNo) && m.isActive !== false);
     setRoomMembers(rm);
-    // Auto-fill rent from room config
+    // Fetch room config (fixed rent + advance from Rooms section)
     try {
       const r = await roomsAPI.getOne(roomNo);
       const rd = r.data;
-      if (rd && rd.rent) {
+      setRoomConfig(rd);
+      if (rd) {
         setForm(p => ({
           ...p,
           roomNumber: roomNo,
-          totalAmount: String(rd.rent),
-          // Auto-set package to rent
+          totalAmount: p.packageName === 'advance' ? String(rd.advance || 0) : String(rd.rent || 0),
           packageName: p.packageName || 'rent',
         }));
       }
     } catch(e) {}
+  };
+
+  // When package type changes, auto-update amount from room config
+  const handlePackageChange = (pkg) => {
+    setForm(p => {
+      let amount = p.totalAmount;
+      if (roomConfig) {
+        if (pkg === 'rent')    amount = String(roomConfig.rent    || 0);
+        if (pkg === 'advance') amount = String(roomConfig.advance || 0);
+      }
+      return { ...p, packageName: pkg, totalAmount: amount };
+    });
   };
 
   const handleMemberSelect = (name) => {
