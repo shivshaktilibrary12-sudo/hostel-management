@@ -17,14 +17,14 @@ const getHostelId = async (req) => {
   return req.user.hostelId;
 };
 
-// Ensure room records exist for all 20 rooms (auto-create if missing)
+// Auto-create room records for all 20 rooms if missing
 async function ensureRoomsExist(hostelId) {
-  const existing = await Room.find({ hostelId }).lean();
+  const existing    = await Room.find({ hostelId }).lean();
   const existingNums = existing.map(r => r.roomNumber);
-  const toCreate = [];
+  const toCreate    = [];
   for (let i = 1; i <= 20; i++) {
     if (!existingNums.includes(i)) {
-      toCreate.push({ hostelId, roomNumber: i, rent: 0, advance: 0, maxCapacity: 6 });
+      toCreate.push({ hostelId, roomNumber: i, rent: 0, advance: 0, maxCapacity: 10 });
     }
   }
   if (toCreate.length > 0) {
@@ -32,19 +32,16 @@ async function ensureRoomsExist(hostelId) {
   }
 }
 
-// GET all rooms with their config + live member data
+// GET all rooms with config + live member data
 router.get('/', async (req, res, next) => {
   try {
     const hostelId = await getHostelId(req);
     if (!hostelId) return res.status(400).json({ message: 'No hostel assigned' });
-
     await ensureRoomsExist(hostelId);
-
     const [roomConfigs, allMembers] = await Promise.all([
       Room.find({ hostelId }).sort({ roomNumber: 1 }).lean(),
       Member.find({ hostelId, isActive: true }).lean(),
     ]);
-
     const rooms = roomConfigs.map(rc => {
       const members = allMembers.filter(m => m.roomNumber === rc.roomNumber);
       return {
@@ -55,11 +52,14 @@ router.get('/', async (req, res, next) => {
         notes:        rc.notes,
         memberCount:  members.length,
         status:       members.length === 0 ? 'vacant' : members.length >= rc.maxCapacity ? 'full' : 'occupied',
-        members:      members.map(m => ({ _id: m._id, name: m.name, mobileNo: m.mobileNo, memberId: m.memberId, roomJoinDate: m.roomJoinDate, policeFormVerified: m.policeFormVerified })),
-        _id:          rc._id,
+        members:      members.map(m => ({
+          _id: m._id, name: m.name, mobileNo: m.mobileNo,
+          memberId: m.memberId, roomJoinDate: m.roomJoinDate,
+          policeFormVerified: m.policeFormVerified,
+        })),
+        _id: rc._id,
       };
     });
-
     res.json(rooms);
   } catch(err) { next(err); }
 });
@@ -69,14 +69,12 @@ router.get('/:roomNumber', async (req, res, next) => {
   try {
     const hostelId = await getHostelId(req);
     if (!hostelId) return res.status(400).json({ message: 'No hostel assigned' });
-
     const roomNum = parseInt(req.params.roomNumber);
     let roomConfig = await Room.findOne({ hostelId, roomNumber: roomNum }).lean();
     if (!roomConfig) {
-      roomConfig = await Room.create({ hostelId, roomNumber: roomNum, rent: 0, advance: 0, maxCapacity: 6 });
+      roomConfig = await Room.create({ hostelId, roomNumber: roomNum, rent: 0, advance: 0, maxCapacity: 10 });
     }
     const members = await Member.find({ hostelId, roomNumber: roomNum, isActive: true }).lean();
-
     res.json({
       ...roomConfig,
       memberCount: members.length,
@@ -86,52 +84,54 @@ router.get('/:roomNumber', async (req, res, next) => {
   } catch(err) { next(err); }
 });
 
-// PUT update room config (rent, advance, capacity, notes)
+// PUT update single room config
 router.put('/:roomNumber', async (req, res, next) => {
   try {
     const hostelId = await getHostelId(req);
     if (!hostelId) return res.status(400).json({ message: 'No hostel assigned' });
-
     const roomNum = parseInt(req.params.roomNumber);
     const { rent, advance, maxCapacity, notes } = req.body;
-
     const updated = await Room.findOneAndUpdate(
       { hostelId, roomNumber: roomNum },
       {
         $set: {
-          ...(rent        !== undefined && { rent:        parseFloat(rent)        || 0 }),
-          ...(advance     !== undefined && { advance:     parseFloat(advance)     || 0 }),
-          ...(maxCapacity !== undefined && { maxCapacity: parseInt(maxCapacity)   || 6 }),
+          ...(rent        !== undefined && { rent:        parseFloat(rent)       || 0 }),
+          ...(advance     !== undefined && { advance:     parseFloat(advance)    || 0 }),
+          ...(maxCapacity !== undefined && { maxCapacity: parseInt(maxCapacity)  || 10 }),
           ...(notes       !== undefined && { notes }),
         }
       },
       { new: true, upsert: true }
     );
-
     res.json(updated);
   } catch(err) { next(err); }
 });
 
-// PUT bulk update all rooms at once
+// PUT bulk update all rooms
 router.put('/', async (req, res, next) => {
   try {
     const hostelId = await getHostelId(req);
     if (!hostelId) return res.status(400).json({ message: 'No hostel assigned' });
-
-    const { rooms } = req.body; // array of { roomNumber, rent, advance, maxCapacity, notes }
+    const { rooms } = req.body;
     if (!Array.isArray(rooms)) return res.status(400).json({ message: 'rooms array required' });
-
     const ops = rooms.map(r => ({
       updateOne: {
         filter: { hostelId, roomNumber: r.roomNumber },
-        update: { $set: { rent: parseFloat(r.rent) || 0, advance: parseFloat(r.advance) || 0, maxCapacity: parseInt(r.maxCapacity) || 6, notes: r.notes || '' } },
+        update: {
+          $set: {
+            rent:        parseFloat(r.rent)       || 0,
+            advance:     parseFloat(r.advance)    || 0,
+            maxCapacity: parseInt(r.maxCapacity)  || 10,
+            notes:       r.notes || '',
+          }
+        },
         upsert: true,
       }
     }));
     await Room.bulkWrite(ops);
-
     res.json({ message: 'All rooms updated' });
   } catch(err) { next(err); }
 });
 
 module.exports = router;
+  

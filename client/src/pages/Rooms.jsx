@@ -260,7 +260,7 @@ export default function Rooms() {
                 <div className="form-group">
                   <label>Max Capacity</label>
                   <select value={editForm.maxCapacity} onChange={e => setEditForm(p => ({ ...p, maxCapacity: e.target.value }))}>
-                    {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n} members</option>)}
+                    {Array.from({length:20},(_,i)=>i+1).map(n => <option key={n} value={n}>{n} member{n>1?'s':''}</option>)}
                   </select>
                 </div>
                 <div className="form-group">
@@ -330,7 +330,7 @@ export default function Rooms() {
                           <select value={r.maxCapacity}
                             onChange={e => updateBulkRow(r.roomNumber, 'maxCapacity', parseInt(e.target.value))}
                             style={{ background: 'var(--bg3)', border: '1px solid var(--border)', borderRadius: 5, padding: '6px 10px', color: 'var(--text)', outline: 'none', fontSize: '0.88rem' }}>
-                            {[1, 2, 3, 4, 5, 6].map(n => <option key={n} value={n}>{n}</option>)}
+                            {Array.from({length:20},(_,i)=>i+1).map(n => <option key={n} value={n}>{n}</option>)}
                           </select>
                         </td>
                       </tr>

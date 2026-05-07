@@ -83,12 +83,26 @@ router.get('/users', authMiddleware, ownerOnly, async (req, res, next) => {
 
 router.post('/users', authMiddleware, ownerOnly, async (req, res, next) => {
   try {
-    const { username, password, name, mobile, hostelId } = req.body;
+    const { username, password, name, mobile } = req.body;
     if (!username || !password || !name) return res.status(400).json({ message: 'username, password and name required' });
     if (password.length < 6) return res.status(400).json({ message: 'Password must be at least 6 characters' });
-    const user = new User({ username: username.toLowerCase().trim(), password, name, mobile, role: 'manager', hostelId: hostelId || null });
+
+    // Check duplicate username
+    const existing = await User.findOne({ username: username.toLowerCase().trim() });
+    if (existing) return res.status(400).json({ message: `Username "${username}" is already taken. Choose a different username.` });
+
+    // Auto-assign hostelId from the owner's hostel
+    let hostelId = req.body.hostelId || null;
+    if (!hostelId) {
+      const Hostel = require('../models/Hostel');
+      const hostel = await Hostel.findOne({ isActive: true }).sort({ createdAt: 1 });
+      hostelId = hostel?._id || null;
+    }
+
+    const user = new User({ username: username.toLowerCase().trim(), password, name, mobile, role: 'manager', hostelId });
     await user.save();
-    res.status(201).json({ message: 'Manager created', user: { username: user.username, name: user.name, role: user.role } });
+    logger.info('Manager created', { username: user.username, by: req.user.username });
+    res.status(201).json({ message: `Manager "${name}" created successfully. They can login with username: ${username}`, user: { username: user.username, name: user.name, role: user.role, hostelId } });
   } catch(err) { next(err); }
 });
 

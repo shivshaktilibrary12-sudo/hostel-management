@@ -99,9 +99,11 @@ exports.create = async (req, res, next) => {
       const totalRooms = hostel?.totalRooms || 20;
       if (roomNumber < 1 || roomNumber > totalRooms)
         { await session.abortTransaction(); return res.status(400).json({ message: `Room ${roomNumber} does not exist. This hostel has ${totalRooms} rooms.` }); }
-      const occupants = await Member.countDocuments({ hostelId, roomNumber: parseInt(roomNumber), isActive: true }).session(session);
-      if (occupants >= 4)
-        { await session.abortTransaction(); return res.status(409).json({ message: `Room ${roomNumber} is full (${occupants}/4). Please choose another room.` }); }
+      const occupants  = await Member.countDocuments({ hostelId, roomNumber: parseInt(roomNumber), isActive: true }).session(session);
+      const roomDoc    = await Room.findOne({ hostelId, roomNumber: parseInt(roomNumber) });
+      const maxCap     = roomDoc?.maxCapacity || 999;
+      if (maxCap < 999 && occupants >= maxCap)
+        { await session.abortTransaction(); return res.status(409).json({ message: `Room ${roomNumber} is full (${occupants}/${maxCap} members). Go to Rooms section to increase capacity if needed.` }); }
     }
 
     const data = { ...req.body, hostelId };
@@ -141,9 +143,11 @@ exports.update = async (req, res, next) => {
       const totalRooms = hostel?.totalRooms || 20;
       if (roomNumber < 1 || roomNumber > totalRooms)
         { await session.abortTransaction(); return res.status(400).json({ message: `Room ${roomNumber} does not exist.` }); }
-      const occupants = await Member.countDocuments({ hostelId, roomNumber: parseInt(roomNumber), isActive: true, _id: { $ne: existing._id } }).session(session);
-      if (occupants >= 4)
-        { await session.abortTransaction(); return res.status(409).json({ message: `Room ${roomNumber} is full (${occupants}/4).` }); }
+      const occupants  = await Member.countDocuments({ hostelId, roomNumber: parseInt(roomNumber), isActive: true, _id: { $ne: existing._id } }).session(session);
+      const roomDocU   = await Room.findOne({ hostelId, roomNumber: parseInt(roomNumber) });
+      const maxCapU    = roomDocU?.maxCapacity || 999;
+      if (maxCapU < 999 && occupants >= maxCapU)
+        { await session.abortTransaction(); return res.status(409).json({ message: `Room ${roomNumber} is full (${occupants}/${maxCapU} members). Go to Rooms section to increase capacity.` }); }
     }
 
     const data = { ...req.body };
