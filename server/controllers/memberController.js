@@ -189,7 +189,7 @@ exports.vacate = async (req, res, next) => {
     const member = await Member.findById(req.params.id);
     if (!member) { if (session) { try { await session.abortTransaction(); } catch(e2) {} } return res.status(404).json({ message: 'Member not found' }); }
     const obj = member.toObject(); delete obj._id;
-    const archived = const _archived = await ArchivedMember.create({ ...obj, originalId: member._id.toString(), vacatedOn: new Date(), vacatedReason: req.body.reason || 'Left hostel', originalCreatedAt: member.createdAt });
+    const archived = await ArchivedMember.create({ ...obj, originalId: member._id.toString(), vacatedOn: new Date(), vacatedReason: req.body.reason || 'Left hostel', originalCreatedAt: member.createdAt });
     await Member.findByIdAndDelete(req.params.id);
     await audit.log({ hostelId: member.hostelId, action: 'VACATE_MEMBER', entity: 'member', entityId: member._id, description: `${member.name} vacated Room ${member.roomNumber}. Reason: ${req.body.reason || 'Left hostel'}`, user: req.user });
     await notify.create({ hostelId: member.hostelId, type: 'member_left', title: `Member left: ${member.name}`, message: `${member.name} vacated Room ${member.roomNumber}`, memberId: member._id, memberName: member.name, roomNumber: member.roomNumber, priority: 'low' });
