@@ -31,6 +31,7 @@ export const authAPI = {
   changePassword: (data)  => api.post('/auth/change-password', data),
   getUsers: ()            => api.get('/auth/users'),
   createUser: (data)      => api.post('/auth/users', data),
+  createManager: (data)   => api.post('/auth/users', data),  // alias for createUser
   toggleUser: (id)        => api.put(`/auth/users/${id}/toggle`),
   deleteUser: (id)        => api.delete(`/auth/users/${id}`),
   getUserActivity: (id)   => api.get(`/auth/users/${id}/activity`),

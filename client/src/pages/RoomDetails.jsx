@@ -37,18 +37,30 @@ export default function RoomDetails() {
 
   const save = async () => {
     if (!form.roomNumber) { toast('Please select a room number', 'error'); return; }
+    if (!editing?._id) { toast('No member selected', 'error'); return; }
     try {
-      await membersAPI.update(editing._id, {
-        roomNumber: parseInt(form.roomNumber),
-        numberOfMembers: parseInt(form.numberOfMembers),
-        rent: parseFloat(form.rent) || 0,
-        advance: parseFloat(form.advance) || 0,
-        roomJoinDate: form.roomJoinDate || null,
+      const payload = {
+        roomNumber:      parseInt(form.roomNumber),
+        numberOfMembers: parseInt(form.numberOfMembers) || 1,
+        rent:            parseFloat(form.rent) || 0,
+        advance:         parseFloat(form.advance) || 0,
+        roomJoinDate:    form.roomJoinDate || null,
         policeFormVerified: form.policeFormVerified,
         roomLeavingDate: form.roomLeavingDate || null,
-      });
-      toast('Room details updated'); setShowModal(false); load();
-    } catch { toast('Error updating room details', 'error'); }
+      };
+      const res = await membersAPI.update(editing._id, payload);
+      if (res.data) {
+        toast('Room details saved for ' + editing.name);
+        setShowModal(false);
+        load();
+      } else {
+        toast('Unexpected response from server', 'error');
+      }
+    } catch(err) {
+      console.error('Save room details error:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Error saving room details';
+      toast(msg, 'error');
+    }
   };
 
   const handleVacate = async () => {
