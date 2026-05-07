@@ -1,6 +1,7 @@
 const Member = require('../models/Member');
 const ArchivedMember = require('../models/ArchivedMember');
 const Hostel = require('../models/Hostel');
+const Room = require('../models/Room');
 const audit = require('../services/audit');
 const notify = require('../services/notifications');
 const validate = require('../utils/validate');
