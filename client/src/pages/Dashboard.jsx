@@ -21,6 +21,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showOverdue, setShowOverdue] = useState(false);
+  const [showPartPay, setShowPartPay] = useState(false);
   const [showDue, setShowDue] = useState(false);
   const [showExpiring, setShowExpiring] = useState(false);
 
@@ -48,7 +49,19 @@ export default function Dashboard() {
       </div>
 
       {/* Alert banners */}
-      {(stats.overdueCount > 0 || stats.expiringCount > 0) && (
+      {/* Part Payment Alert Card */}
+      {stats.partPaymentCount > 0 && (
+        <div style={{ background: 'rgba(155,89,182,0.07)', border: '1px solid rgba(155,89,182,0.3)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer', marginBottom: 10 }} onClick={() => setShowPartPay(true)}>
+          <span style={{ fontSize: '1.4rem' }}>💳</span>
+          <div style={{ flex: 1 }}>
+            <strong style={{ color: '#9b59b6' }}>{stats.partPaymentCount} room{stats.partPaymentCount > 1 ? 's' : ''} with outstanding balance</strong>
+            <span style={{ color: 'var(--text3)', fontSize: '0.82rem', marginLeft: 8 }}>Total pending: ₹{fmt(stats.totalBalanceDue || 0)}</span>
+          </div>
+          <span style={{ color: '#9b59b6', fontSize: '0.82rem', fontWeight: 600 }}>View →</span>
+        </div>
+      )}
+
+            {(stats.overdueCount > 0 || stats.expiringCount > 0) && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8, marginBottom: 20 }}>
           {stats.overdueCount > 0 && (
             <div style={{ background: 'rgba(231,76,60,0.08)', border: '1px solid rgba(231,76,60,0.3)', borderRadius: 8, padding: '12px 16px', display: 'flex', alignItems: 'center', gap: 12, cursor: 'pointer' }} onClick={() => setShowOverdue(true)}>
@@ -182,69 +195,80 @@ export default function Dashboard() {
       {/* Overdue Modal */}
       {showOverdue && (
         <Modal title="🚨 Overdue Members" onClose={() => setShowOverdue(false)}>
-          {stats.overdueMembers.map(m => {
-            const daysOverdue = Math.floor((new Date() - new Date(m.roomLeavingDate)) / (1000*60*60*24));
-            return (
-            <div key={m._id} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.95rem' }}>{m.name}</div>
-                  <div style={{ fontSize: '0.78rem', color: 'var(--text3)', marginTop: 2 }}>
-                    🚪 Room {m.roomNumber} &nbsp;·&nbsp; 📱 {m.mobileNo || 'No mobile'} &nbsp;·&nbsp;
-                    <span style={{ color: 'var(--danger)', fontWeight: 600 }}>Overdue by {daysOverdue} day{daysOverdue !== 1 ? 's' : ''}</span>
-                  </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text3)', marginTop: 1 }}>
-                    Plan ended: {new Date(m.roomLeavingDate).toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' })}
-                    {m.rent ? ` · Room Rent: ₹${m.rent.toLocaleString('en-IN')}` : ''}
-                  </div>
-                </div>
-                {m.mobileNo && (
-                  <button style={{ background: '#25d366', color: 'white', border: 'none', borderRadius: 6, padding: '7px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, flexShrink: 0 }}
-                    onClick={() => wa.sendReminder(m.mobileNo, m.name, m.roomNumber, m.rent || 0, 'final dues')}>
-                    📱 WhatsApp
-                  </button>
-                )}
+          {stats.overdueMembers.map(m => (
+            <div key={m._id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{m.name}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text3)' }}>Room {m.roomNumber} · Due: {new Date(m.roomLeavingDate).toLocaleDateString('en-IN')}</div>
               </div>
+              {m.mobileNo && <button style={{ background: '#25d366', color: 'white', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }} onClick={() => wa.sendReminder(m.mobileNo, m.name, m.roomNumber, m.rent || 0, 'final dues')}>📱 Remind</button>}
             </div>
-            );
-          })}
+          ))}
         </Modal>
       )}
 
       {/* Expiring Modal */}
       {showExpiring && (
         <Modal title="⏰ Expiring Soon" onClose={() => setShowExpiring(false)}>
-          {stats.expiringMembers.map(m => {
-            const daysLeft = Math.ceil((new Date(m.roomLeavingDate) - new Date()) / (1000*60*60*24));
-            return (
-            <div key={m._id} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+          {stats.expiringMembers.map(m => (
+            <div key={m._id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 600, color: 'var(--text)' }}>{m.name}</div>
+                <div style={{ fontSize: '0.78rem', color: 'var(--text3)' }}>Room {m.roomNumber} · Leaves: {new Date(m.roomLeavingDate).toLocaleDateString('en-IN')}</div>
+              </div>
+              {m.mobileNo && <button style={{ background: '#25d366', color: 'white', border: 'none', borderRadius: 6, padding: '5px 10px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600 }} onClick={() => wa.sendReminder(m.mobileNo, m.name, m.roomNumber, m.rent || 0, 'stay renewal')}>📱 Remind</button>}
+            </div>
+          ))}
+        </Modal>
+      )}
+
+      {/* Due this month Modal */}
+      {/* Part Payment Modal */}
+      {showPartPay && (
+        <Modal title="💳 Outstanding Balances" onClose={() => setShowPartPay(false)}>
+          <div style={{ fontSize: '0.82rem', color: 'var(--text2)', marginBottom: 12 }}>
+            These rooms have part payments with pending balances. Total due: <strong style={{ color: '#9b59b6' }}>₹{fmt(stats.totalBalanceDue || 0)}</strong>
+          </div>
+          {(stats.partPaymentReceipts || []).map((r, i) => (
+            <div key={i} style={{ padding: '12px 0', borderBottom: '1px solid var(--border)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontWeight: 600, color: 'var(--text)', fontSize: '0.95rem' }}>{m.name}</div>
+                  <div style={{ fontWeight: 600, color: 'var(--text)' }}>Room {r.roomNumber} — {r.memberName}</div>
                   <div style={{ fontSize: '0.78rem', color: 'var(--text3)', marginTop: 2 }}>
-                    🚪 Room {m.roomNumber} &nbsp;·&nbsp; 📱 {m.mobileNo || 'No mobile'} &nbsp;·&nbsp;
-                    <span style={{ color: daysLeft <= 3 ? 'var(--danger)' : 'var(--accent)', fontWeight: 600 }}>{daysLeft} day{daysLeft !== 1 ? 's' : ''} left</span>
+                    Bill: {r.billNumber} · Total: ₹{fmt(r.totalAmount)} · Paid: ₹{fmt(r.amountPaid || 0)}
                   </div>
-                  <div style={{ fontSize: '0.75rem', color: 'var(--text3)', marginTop: 1 }}>
-                    Plan ends: {new Date(m.roomLeavingDate).toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' })}
-                    {m.rent ? ` · Room Rent: ₹${m.rent.toLocaleString('en-IN')}` : ''}
+                  <div style={{ fontSize: '0.78rem', color: '#9b59b6', fontWeight: 600, marginTop: 2 }}>
+                    Balance Due: ₹{fmt(r.balanceDue || 0)}
                   </div>
                 </div>
-                {m.mobileNo && (
-                  <button style={{ background: '#25d366', color: 'white', border: 'none', borderRadius: 6, padding: '7px 12px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 600, flexShrink: 0 }}
-                    onClick={() => wa.sendReminder(m.mobileNo, m.name, m.roomNumber, m.rent || 0, 'stay renewal')}>
+                {r.memberMobile && (
+                  <button style={{ background: '#25d366', color: 'white', border: 'none', borderRadius: 6, padding: '6px 10px', cursor: 'pointer', fontSize: '0.75rem', fontWeight: 600, flexShrink: 0 }}
+                    onClick={() => wa.sendCustom(r.memberMobile, `🏠 *HOSTEL PAYMENT REMINDER*
+
+Dear ${r.memberName},
+
+You have an outstanding balance of *₹${r.balanceDue}* for Room ${r.roomNumber}.
+Bill No: ${r.billNumber}
+Total Bill: ₹${r.totalAmount}
+Paid: ₹${r.amountPaid || 0}
+*Balance Due: ₹${r.balanceDue}*
+
+Please clear this at the earliest.
+
+Thank you 🙏`)}>
                     📱 WhatsApp
                   </button>
                 )}
               </div>
             </div>
-            );
-          })}
+          ))}
+          {(!stats.partPaymentReceipts || stats.partPaymentReceipts.length === 0) && (
+            <div style={{ textAlign: 'center', color: 'var(--text3)', padding: 20 }}>No part payment details available</div>
+          )}
         </Modal>
       )}
 
-      {/* Due this month Modal */}
-      {showDue && stats.dueMembersCount > 0 && (
+            {showDue && stats.dueMembersCount > 0 && (
         <Modal title="💰 Rent Due This Month" onClose={() => setShowDue(false)}>
           <p style={{ fontSize: '0.82rem', color: 'var(--text3)', marginBottom: 14 }}>These members have no rent receipt recorded for this month.</p>
           {/* We reload due members from stats estimatedDue member list — loaded in dashboard data */}

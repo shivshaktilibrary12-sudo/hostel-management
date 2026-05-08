@@ -76,6 +76,20 @@ router.get('/', async (req, res, next) => {
     const membersDueThi = activeRoomMembers.filter(m => !thisMonthRoomsPaid.has(m.roomNumber));
     const estimatedDue = membersDueThi.reduce((s, m) => s + (m.rent || 0), 0);
 
+    // Part payments with outstanding balances
+    const partPaymentReceipts = allReceipts
+      .filter(r => r.isPartPayment && (r.balanceDue || 0) > 0)
+      .sort((a, b) => (b.balanceDue || 0) - (a.balanceDue || 0))
+      .slice(0, 20);
+    const totalBalanceDue = allReceipts.reduce((s, r) => s + (r.balanceDue || 0), 0);
+    const partPaymentRoomNums = new Set(partPaymentReceipts.map(r => r.roomNumber));
+
+    // Fix income to use amountPaid not totalAmount
+    const totalRevenueActual = allReceipts.reduce((s, r) => s + (r.amountPaid || r.totalAmount || 0), 0);
+    const monthRevenueActual = thisMonthReceipts.reduce((s, r) => s + (r.amountPaid || r.totalAmount || 0), 0);
+    const cashRevenueActual  = allReceipts.filter(r => r.modeOfPayment === 'cash').reduce((s, r) => s + (r.amountPaid || r.totalAmount || 0), 0);
+    const onlineRevenueActual= allReceipts.filter(r => r.modeOfPayment === 'online').reduce((s, r) => s + (r.amountPaid || r.totalAmount || 0), 0);
+
     res.json({
       totalMembers,
       activeMembers,
@@ -88,16 +102,19 @@ router.get('/', async (req, res, next) => {
       expiringMembers,
       dueMembersCount: membersDueThi.length,
       estimatedDue,
-      totalRevenue,
-      monthRevenue,
+      totalRevenue: totalRevenueActual,
+      monthRevenue: monthRevenueActual,
       totalExpenses,
-      netIncome: totalRevenue - totalExpenses,
-      cashRevenue,
-      onlineRevenue,
+      netIncome: totalRevenueActual - totalExpenses,
+      cashRevenue: cashRevenueActual,
+      onlineRevenue: onlineRevenueActual,
       unreadNotifications: unreadCount,
       trend,
       roomStatus,
       recentReceipts: allReceipts.sort((a, b) => new Date(b.receiptDate) - new Date(a.receiptDate)).slice(0, 8),
+      partPaymentCount: partPaymentRoomNums.size,
+      partPaymentReceipts,
+      totalBalanceDue,
     });
   } catch(err) { next(err); }
 });
