@@ -170,4 +170,4 @@ export const whatsapp = {
     const num = `91${String(mobile).replace(/\D/g,'').replace(/^91/,'')}`;
     window.open(`https://wa.me/${num}?text=${encodeURIComponent(message)}`, '_blank');
   },
-};
+};  

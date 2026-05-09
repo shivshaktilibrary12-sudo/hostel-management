@@ -26,7 +26,9 @@ export default function Reports() {
 
   const activeMembers = members.filter(m => m.isActive !== false && m.roomNumber);
 
-  const totalIncome = receipts.reduce((s, r) => s + (r.amountPaid || r.totalAmount || 0), 0); // uses amountPaid to handle part payments
+  // totalIncome = sum of all amounts actually paid (amountPaid handles part payments)
+  // Receipts are per-room so no double-counting
+  const totalIncome = receipts.reduce((s, r) => s + (r.amountPaid || r.totalAmount || 0), 0);
   const cashTotal = receipts.filter(r => r.modeOfPayment === 'cash').reduce((s, r) => s + (r.amountPaid || r.totalAmount || 0), 0);
   const onlineTotal = receipts.filter(r => r.modeOfPayment === 'online').reduce((s, r) => s + (r.amountPaid || r.totalAmount || 0), 0);
   const totalSalaryPaid = salary.reduce((s, r) => s + (r.netSalary || 0), 0);
@@ -223,7 +225,7 @@ export default function Reports() {
         <div className="card">
           <div className="table-wrap">
             <table>
-              <thead><tr><th>Room</th><th>Members</th><th>Fixed Rent/mo</th><th>Rent Collected</th><th>Electric</th><th>Advance</th><th>Total Paid</th><th>Receipts Count</th></tr></thead>
+              <thead><tr><th>Room</th><th>Members</th><th>Fixed Rent/mo</th><th>Rent Collected</th><th>Electric</th><th>Advance</th><th>Total Paid</th><th title="Number of payment entries for this room">Payments</th></tr></thead>
               <tbody>
                 {Array.from({ length: maxRooms }, (_, i) => i + 1).map(rn => {
                   const rr = receipts.filter(r => r.roomNumber === rn);
@@ -234,20 +236,18 @@ export default function Reports() {
                       <td><span className="badge badge-blue">Room {rn}</span></td>
                       <td style={{ fontSize: '0.8rem', color: 'var(--text2)' }}>{rm.map(m => m.name).join(', ') || '—'}</td>
                       <td>
-                        {rm.length > 0
-                          ? (() => {
-                              // Show fixed room rent (not per-member sum)
-                              // Use first member's rent as the room rent (they all share it)
-                              const roomRent = rr.filter(r => r.packageName === 'rent')[0]?.totalAmount
-                                || rm[0]?.rent || 0;
-                              return `₹${fmt(roomRent)}`;
-                            })()
-                          : '—'}
+                        {(() => {
+                          // Fixed rent for the room (shared by all members, not multiplied)
+                          // Use first rent receipt's totalAmount as the agreed room rent
+                          const rentReceipt = rr.find(r => r.packageName === 'rent' || r.paymentType === 'rent');
+                          const roomRent = rentReceipt?.totalAmount || rm[0]?.rent || 0;
+                          return rm.length > 0 ? `₹${fmt(roomRent)}` : '—';
+                        })()}
                       </td>
                       <td>₹{fmt(rr.reduce((s, r) => s + (r.rent || 0), 0))}</td>
                       <td>₹{fmt(rr.reduce((s, r) => s + (r.electric || 0), 0))}</td>
                       <td>₹{fmt(rr.reduce((s, r) => s + (r.advance || 0), 0))}</td>
-                      <td style={{ color: 'var(--accent)', fontWeight: 700 }}>₹{fmt(rr.reduce((s, r) => s + (r.totalAmount || 0), 0))}</td>
+                      <td style={{ color: 'var(--accent)', fontWeight: 700 }}>₹{fmt(rr.reduce((s, r) => s + (r.amountPaid || r.totalAmount || 0), 0))}</td>
                       <td>{rr.length}</td>
                     </tr>
                   );
@@ -256,7 +256,7 @@ export default function Reports() {
             </table>
           </div>
           <div style={{marginTop:12,padding:'8px 12px',background:'rgba(52,152,219,0.07)',borderRadius:6,fontSize:'0.75rem',color:'var(--text3)'}}>
-            💡 <strong>Fixed Rent/mo</strong> — the agreed monthly rent for the whole room (shared by all members, not multiplied per member). &nbsp;
+            💡 <strong>Fixed Rent/mo</strong> = agreed room rent (shared by all members, shown once per room). — the agreed monthly rent for the whole room (shared by all members, not multiplied per member). &nbsp;
             <strong>Receipts Count</strong> — number of receipt entries made for this room (rent + advance + electric etc. combined).
           </div>
         </div>
