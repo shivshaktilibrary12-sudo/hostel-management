@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { membersAPI } from '../utils/api';
+import { membersAPI, roomsAPI, whatsapp as wa } from '../utils/api';
 import { useToast } from '../context/ToastContext';
 
 export default function RoomDetails() {
@@ -37,18 +37,30 @@ export default function RoomDetails() {
 
   const save = async () => {
     if (!form.roomNumber) { toast('Please select a room number', 'error'); return; }
+    if (!editing?._id) { toast('No member selected', 'error'); return; }
     try {
-      await membersAPI.update(editing._id, {
-        roomNumber: parseInt(form.roomNumber),
-        numberOfMembers: parseInt(form.numberOfMembers),
-        rent: parseFloat(form.rent) || 0,
-        advance: parseFloat(form.advance) || 0,
-        roomJoinDate: form.roomJoinDate || null,
+      const payload = {
+        roomNumber:      parseInt(form.roomNumber),
+        numberOfMembers: parseInt(form.numberOfMembers) || 1,
+        rent:            parseFloat(form.rent) || 0,
+        advance:         parseFloat(form.advance) || 0,
+        roomJoinDate:    form.roomJoinDate || null,
         policeFormVerified: form.policeFormVerified,
         roomLeavingDate: form.roomLeavingDate || null,
-      });
-      toast('Room details updated'); setShowModal(false); load();
-    } catch { toast('Error updating room details', 'error'); }
+      };
+      const res = await membersAPI.update(editing._id, payload);
+      if (res.data) {
+        toast('Room details saved for ' + editing.name);
+        setShowModal(false);
+        load();
+      } else {
+        toast('Unexpected response from server', 'error');
+      }
+    } catch(err) {
+      console.error('Save room details error:', err);
+      const msg = err?.response?.data?.message || err?.message || 'Error saving room details';
+      toast(msg, 'error');
+    }
   };
 
   const handleVacate = async () => {
@@ -66,33 +78,48 @@ export default function RoomDetails() {
     <div className="table-wrap">
       <table>
         <thead>
-          <tr><th>Name</th><th>Room</th><th>Rent</th><th>Advance</th><th>Join Date</th><th>Leaving Date</th><th>Police</th><th>Actions</th></tr>
+          <tr><th>Name</th><th>Mobile</th><th>Room</th><th>Rent</th><th>Advance</th><th>Join Date</th><th>Leaving Date</th><th>Police</th><th>Actions</th></tr>
         </thead>
         <tbody>
           {list.length === 0 ? (
-            <tr><td colSpan={8}><div className="empty-state"><div className="empty-icon">{isDue?'⚠️':'📋'}</div><p>{isDue?'No overdue members':'No members'}</p></div></td></tr>
-          ) : list.map(m => (
+            <tr><td colSpan={9}><div className="empty-state"><div className="empty-icon">{isDue?'⚠️':'📋'}</div><p>{isDue?'No overdue members':'No members'}</p></div></td></tr>
+          ) : list.map(m => {
+            const daysOverdue = isDue && m.roomLeavingDate
+              ? Math.floor((new Date() - new Date(m.roomLeavingDate)) / (1000*60*60*24))
+              : 0;
+            return (
             <tr key={m._id}>
               <td style={{color:'var(--text)',fontWeight:500}}>{m.name}</td>
+              <td style={{fontSize:'0.82rem'}}>{m.mobileNo || '—'}</td>
               <td>{m.roomNumber ? <span className="badge badge-blue">Room {m.roomNumber}</span> : '—'}</td>
               <td>₹{m.rent||0}</td>
               <td>₹{m.advance||0}</td>
               <td>{m.roomJoinDate ? new Date(m.roomJoinDate).toLocaleDateString('en-IN') : '—'}</td>
               <td style={{color:isDue?'var(--danger)':'var(--text2)'}}>
                 {m.roomLeavingDate ? new Date(m.roomLeavingDate).toLocaleDateString('en-IN') : '—'}
-                {isDue && ' ⚠️'}
+                {isDue && daysOverdue > 0 && <span style={{fontSize:'0.7rem',display:'block',color:'var(--danger)'}}>({daysOverdue}d overdue)</span>}
               </td>
               <td><span className={`badge ${m.policeFormVerified?'badge-green':'badge-red'}`}>{m.policeFormVerified?'Done':'Pending'}</span></td>
               <td>
-                <div style={{display:'flex',gap:6}}>
+                <div style={{display:'flex',gap:5,flexWrap:'wrap'}}>
                   <button className="btn btn-secondary btn-xs" onClick={() => open(m)}>Edit</button>
-                  <button className="btn btn-xs" style={{background:'rgba(243,156,18,0.15)',color:'#f39c12',border:'1px solid rgba(243,156,18,0.3)',padding:'4px 8px',borderRadius:4,cursor:'pointer',fontSize:'0.75rem',fontFamily:'Rajdhani',fontWeight:600}} onClick={()=>{setShowVacateModal(m);setVacateReason('Plan expired / Left hostel');}}>
+                  {isDue && m.mobileNo && (
+                    <button
+                      onClick={() => wa.sendReminder(m.mobileNo, m.name, m.roomNumber, m.rent || 0, 'rent dues')}
+                      style={{background:'#25d366',color:'white',border:'none',borderRadius:4,padding:'4px 8px',cursor:'pointer',fontSize:'0.72rem',fontWeight:600,whiteSpace:'nowrap'}}
+                      title={`Send WhatsApp reminder to ${m.mobileNo}`}
+                    >
+                      📱 WhatsApp
+                    </button>
+                  )}
+                  <button className="btn btn-xs" style={{background:'rgba(243,156,18,0.15)',color:'#f39c12',border:'1px solid rgba(243,156,18,0.3)',padding:'4px 8px',borderRadius:4,cursor:'pointer',fontSize:'0.72rem',fontFamily:'Rajdhani',fontWeight:600}} onClick={()=>{setShowVacateModal(m);setVacateReason('Plan expired / Left hostel');}}>
                     📦 Vacate
                   </button>
                 </div>
               </td>
             </tr>
-          ))}
+            );
+          })}
         </tbody>
       </table>
     </div>
@@ -176,7 +203,25 @@ export default function RoomDetails() {
               <div className="form-grid">
                 <div className="form-group">
                   <label>Room Number</label>
-                  <select value={form.roomNumber} onChange={e=>setForm(p=>({...p,roomNumber:e.target.value}))}>
+                  <select value={form.roomNumber} onChange={async e => {
+                    const roomNo = e.target.value;
+                    setForm(p => ({ ...p, roomNumber: roomNo }));
+                    if (roomNo) {
+                      try {
+                        const r = await roomsAPI.getOne(roomNo);
+                        const rd = r.data;
+                        if (rd) {
+                          setForm(p => ({
+                            ...p,
+                            roomNumber: roomNo,
+                            rent: rd.rent || p.rent || '',
+                            advance: rd.advance || p.advance || '',
+                            numberOfMembers: rd.memberCount >= 0 ? Math.max(1, rd.memberCount + 1) : p.numberOfMembers,
+                          }));
+                        }
+                      } catch(e) {}
+                    }
+                  }}>
                     <option value="">Select Room</option>
                     {Array.from({length:20},(_,i)=>i+1).map(n=><option key={n} value={n}>Room {n}</option>)}
                   </select>
@@ -187,8 +232,14 @@ export default function RoomDetails() {
                     {[1,2,3,4,5,6].map(n=><option key={n} value={n}>{n}</option>)}
                   </select>
                 </div>
-                <div className="form-group"><label>Monthly Rent (₹)</label><input value={form.rent} onChange={e=>setForm(p=>({...p,rent:e.target.value}))} type="number" /></div>
-                <div className="form-group"><label>Advance (₹)</label><input value={form.advance} onChange={e=>setForm(p=>({...p,advance:e.target.value}))} type="number" /></div>
+                <div className="form-group">
+                  <label>Monthly Rent (₹) <span style={{fontSize:'0.7rem',color:'var(--text3)',fontWeight:400,textTransform:'none'}}>— auto-filled from room config, editable</span></label>
+                  <input value={form.rent} onChange={e=>setForm(p=>({...p,rent:e.target.value}))} type="number" placeholder="Auto-filled from Room settings" />
+                </div>
+                <div className="form-group">
+                  <label>Advance (₹) <span style={{fontSize:'0.7rem',color:'var(--text3)',fontWeight:400,textTransform:'none'}}>— cumulative for the room</span></label>
+                  <input value={form.advance} onChange={e=>setForm(p=>({...p,advance:e.target.value}))} type="number" placeholder="Auto-filled from Room settings" />
+                </div>
                 <div className="form-group"><label>Room Join Date</label><input value={form.roomJoinDate} onChange={e=>setForm(p=>({...p,roomJoinDate:e.target.value}))} type="date" /></div>
                 <div className="form-group"><label>Room Leaving Date</label><input value={form.roomLeavingDate} onChange={e=>setForm(p=>({...p,roomLeavingDate:e.target.value}))} type="date" /></div>
                 <div className="form-group full">

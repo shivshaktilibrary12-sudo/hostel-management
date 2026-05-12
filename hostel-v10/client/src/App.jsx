@@ -17,6 +17,7 @@ import Managers from './pages/Managers';
 import Hostels from './pages/Hostels';
 import Notifications from './pages/Notifications';
 import AuditLog from './pages/AuditLog';
+import DuesAndPayments from './pages/DuesAndPayments';
 import { authAPI, hostelAPI, notificationsAPI } from './utils/api';
 
 const OWNER_NAV = [

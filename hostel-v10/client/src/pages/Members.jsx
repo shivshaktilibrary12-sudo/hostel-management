@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { membersAPI, whatsapp as wa } from '../utils/api';
+import { membersAPI, roomsAPI, whatsapp as wa } from '../utils/api';
 import { useToast } from '../context/ToastContext';
 
 const EMPTY = {
@@ -57,6 +57,8 @@ export default function Members() {
   const [tab, setTab]           = useState('active');
   const [showModal, setShowModal] = useState(false);
   const [showVacateModal, setShowVacateModal] = useState(null);
+  const [showRestoreModal, setShowRestoreModal] = useState(null);
+  const [restoreRoom, setRestoreRoom] = useState('');
   const [showPrintMember, setShowPrintMember] = useState(null);
   const [showRules, setShowRules] = useState(false);
   const [editing, setEditing]   = useState(null);
@@ -374,7 +376,50 @@ export default function Members() {
         </div>
       )}
 
-      {/* Rules Modal */}
+      {/* Restore Modal */}
+      {showRestoreModal && (
+        <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowRestoreModal(null)}>
+          <div className="modal" style={{maxWidth:420}}>
+            <div className="modal-header">
+              <h3>↩ Restore Member</h3>
+              <button className="close-btn" onClick={()=>setShowRestoreModal(null)}>✕</button>
+            </div>
+            <div className="modal-body">
+              <div style={{background:'rgba(46,204,113,0.07)',border:'1px solid rgba(46,204,113,0.25)',borderRadius:8,padding:'12px 14px',marginBottom:16}}>
+                <div style={{fontWeight:600,color:'var(--text)'}}>{showRestoreModal.name}</div>
+                <div style={{fontSize:'0.82rem',color:'var(--text3)',marginTop:3}}>
+                  {showRestoreModal.memberId && `ID: ${showRestoreModal.memberId} · `}
+                  {showRestoreModal.mobileNo} · Vacated from Room {showRestoreModal.roomNumber || '—'}
+                </div>
+                <div style={{fontSize:'0.78rem',color:'var(--text3)',marginTop:2}}>
+                  Vacated on: {showRestoreModal.vacatedOn ? new Date(showRestoreModal.vacatedOn).toLocaleDateString('en-IN') : '—'} · Reason: {showRestoreModal.vacatedReason || '—'}
+                </div>
+              </div>
+              <div className="form-group">
+                <label>Assign to Room (optional)</label>
+                <select value={restoreRoom} onChange={e=>setRestoreRoom(e.target.value)}
+                  style={{background:'var(--bg3)',border:'1px solid var(--border)',borderRadius:6,padding:'10px 12px',color:'var(--text)',outline:'none',width:'100%'}}>
+                  <option value="">— No room (assign later in Room Details) —</option>
+                  {Array.from({length:20},(_,i)=>i+1).map(n=>(
+                    <option key={n} value={n}>Room {n}</option>
+                  ))}
+                </select>
+                <div style={{fontSize:'0.72rem',color:'var(--text3)',marginTop:5}}>
+                  💡 You can assign or change the room after restoring via Room Details section
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={()=>setShowRestoreModal(null)}>Cancel</button>
+              <button className="btn btn-success" onClick={()=>handleRestore(showRestoreModal._id, showRestoreModal.name, restoreRoom)}>
+                ↩ Restore{restoreRoom ? ` to Room ${restoreRoom}` : ' (No Room)'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+            {/* Rules Modal */}
       {showRules && (
         <div className="modal-overlay" onClick={e=>e.target===e.currentTarget&&setShowRules(false)}>
           <div className="modal" style={{maxWidth:680}}>
@@ -413,10 +458,12 @@ function MemberPrintCard({ member }) {
       {row("Father's Name", member.fathersName)}
       {row("Father's Mobile", member.fathersMobileNo)}
       {row("Father's Occupation", member.fathersOccupation)}
-      {row('Relative Name', member.permanentAddressRelativeName)}
-      {row('Relative Mobile', member.permanentAddressRelativeMobile)}
-      {row('Local Relative', member.localRelativeName)}
-      {row('Local Mobile', member.localRelativeMobile)}
+      {row('Permanent Address Relative Name', member.permanentAddressRelativeName)}
+      {row('Permanent Address Relative Mobile', member.permanentAddressRelativeMobile)}
+      {row('Permanent Address Relative Address', member.permanentAddressRelativeAddress)}
+      {row('Local Relative Name', member.localRelativeName)}
+      {row('Local Relative Mobile', member.localRelativeMobile)}
+      {row('Local Relative Address', member.localRelativeAddress)}
       {row('Room Number', member.roomNumber ? `Room ${member.roomNumber}` : '—')}
       {row('Monthly Rent', member.rent ? `₹${member.rent}` : '—')}
       {row('Police Form', member.policeFormVerified ? 'Verified ✓' : 'Pending')}

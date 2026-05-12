@@ -1,6 +1,7 @@
 const Member = require('../models/Member');
 const ArchivedMember = require('../models/ArchivedMember');
 const Hostel = require('../models/Hostel');
+const Room = require('../models/Room');
 const audit = require('../services/audit');
 const notify = require('../services/notifications');
 const validate = require('../utils/validate');
@@ -73,11 +74,11 @@ exports.nextId = async (req, res, next) => {
 };
 
 exports.create = async (req, res, next) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  let session = null;
+  try { session = await mongoose.startSession(); session.startTransaction(); } catch(e) { session = null; }
   try {
     const hostelId = await getHostelId(req);
-    if (!hostelId) { await session.abortTransaction(); return res.status(400).json({ message: 'No hostel assigned. Contact owner.' }); }
+    if (!hostelId) { if (session) { try { await session.abortTransaction(); } catch(e2) {} } return res.status(400).json({ message: 'No hostel assigned. Contact owner.' }); }
 
     const { name, mobileNo, aadharNumber, fathersName, fathersMobileNo, permanentAddress, fathersOccupation, roomNumber } = req.body;
     const errors = validate.collect([
@@ -92,16 +93,18 @@ exports.create = async (req, res, next) => {
       validate.mobile(fathersMobileNo, "Father's mobile"),
       validate.aadhar(aadharNumber),
     ]);
-    if (errors.length) { await session.abortTransaction(); return res.status(400).json({ message: errors[0], errors }); }
+    if (errors.length) { if (session) { try { await session.abortTransaction(); } catch(e2) {} } return res.status(400).json({ message: errors[0], errors }); }
 
     if (roomNumber) {
-      const hostel = await Hostel.findById(hostelId).session(session);
+      const hostel = await Hostel.findById(hostelId);
       const totalRooms = hostel?.totalRooms || 20;
       if (roomNumber < 1 || roomNumber > totalRooms)
-        { await session.abortTransaction(); return res.status(400).json({ message: `Room ${roomNumber} does not exist. This hostel has ${totalRooms} rooms.` }); }
-      const occupants = await Member.countDocuments({ hostelId, roomNumber: parseInt(roomNumber), isActive: true }).session(session);
-      if (occupants >= 4)
-        { await session.abortTransaction(); return res.status(409).json({ message: `Room ${roomNumber} is full (${occupants}/4). Please choose another room.` }); }
+        { if (session) { try { await session.abortTransaction(); } catch(e2) {} } return res.status(400).json({ message: `Room ${roomNumber} does not exist. This hostel has ${totalRooms} rooms.` }); }
+      const occupants  = await Member.countDocuments({ hostelId, roomNumber: parseInt(roomNumber), isActive: true });
+      const roomDoc    = await Room.findOne({ hostelId, roomNumber: parseInt(roomNumber) }).catch(() => null);
+      const maxCap     = roomDoc?.maxCapacity || 999;
+      if (maxCap < 999 && occupants >= maxCap)
+        { if (session) { try { await session.abortTransaction(); } catch(e2) {} } return res.status(409).json({ message: `Room ${roomNumber} is full (${occupants}/${maxCap} members). Go to Rooms section to increase capacity if needed.` }); }
     }
 
     const data = { ...req.body, hostelId };
@@ -111,21 +114,26 @@ exports.create = async (req, res, next) => {
       data.memberId = `SS/${shortYear}/${String(data.memberIdNumber).padStart(3, '0')}`;
       data.registrationYear = shortYear;
     }
-    const [saved] = await Member.create([data], { session });
+    const saved = await Member.create(data);
     await audit.log({ hostelId, action: 'CREATE_MEMBER', entity: 'member', entityId: saved._id, description: `Added ${saved.name}${saved.roomNumber ? ` to Room ${saved.roomNumber}` : ''}`, user: req.user });
     await notify.create({ hostelId, type: 'new_member', title: `New member: ${saved.name}`, message: `${saved.name} added${saved.roomNumber ? ` to Room ${saved.roomNumber}` : ''}`, memberId: saved._id, memberName: saved.name, roomNumber: saved.roomNumber, priority: 'low' });
-    await session.commitTransaction();
+    if (session) await session.commitTransaction();
     res.status(201).json(saved);
-  } catch(err) { await session.abortTransaction(); next(err); }
-  finally { session.endSession(); }
+  } catch(err) { if (session) { try { await session.abortTransaction(); } catch(e2) {} } next(err); }
+  finally { if (session) { try { session.endSession(); } catch(e3) {} }; }
 };
 
 exports.update = async (req, res, next) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  // Try with transaction first; fall back to non-transactional if replica set not available
+  let session = null;
+  try { session = await mongoose.startSession(); session.startTransaction(); } catch(e) { session = null; }
+
   try {
-    const existing = await Member.findById(req.params.id).session(session);
-    if (!existing) { await session.abortTransaction(); return res.status(404).json({ message: 'Member not found' }); }
+    const existing = await Member.findById(req.params.id);
+    if (!existing) {
+      if (session) await session.abortTransaction();
+      return res.status(404).json({ message: 'Member not found' });
+    }
 
     const { mobileNo, aadharNumber, fathersMobileNo, roomNumber } = req.body;
     const errors = validate.collect([
@@ -133,49 +141,63 @@ exports.update = async (req, res, next) => {
       fathersMobileNo ? validate.mobile(fathersMobileNo, "Father's mobile") : null,
       aadharNumber ? validate.aadhar(aadharNumber) : null,
     ]);
-    if (errors.length) { await session.abortTransaction(); return res.status(400).json({ message: errors[0], errors }); }
+    if (errors.length) {
+      if (session) await session.abortTransaction();
+      return res.status(400).json({ message: errors[0], errors });
+    }
 
     if (roomNumber && parseInt(roomNumber) !== existing.roomNumber) {
       const hostelId = existing.hostelId;
-      const hostel = await Hostel.findById(hostelId).session(session);
+      const hostel = await Hostel.findById(hostelId);
       const totalRooms = hostel?.totalRooms || 20;
-      if (roomNumber < 1 || roomNumber > totalRooms)
-        { await session.abortTransaction(); return res.status(400).json({ message: `Room ${roomNumber} does not exist.` }); }
-      const occupants = await Member.countDocuments({ hostelId, roomNumber: parseInt(roomNumber), isActive: true, _id: { $ne: existing._id } }).session(session);
-      if (occupants >= 4)
-        { await session.abortTransaction(); return res.status(409).json({ message: `Room ${roomNumber} is full (${occupants}/4).` }); }
+      if (parseInt(roomNumber) < 1 || parseInt(roomNumber) > totalRooms) {
+        if (session) await session.abortTransaction();
+        return res.status(400).json({ message: `Room ${roomNumber} does not exist.` });
+      }
+      const occupants = await Member.countDocuments({ hostelId, roomNumber: parseInt(roomNumber), isActive: true, _id: { $ne: existing._id } });
+      const roomDocU  = await Room.findOne({ hostelId, roomNumber: parseInt(roomNumber) }).catch(() => null);
+      const maxCapU   = roomDocU?.maxCapacity || 999;
+      if (maxCapU < 999 && occupants >= maxCapU) {
+        if (session) await session.abortTransaction();
+        return res.status(409).json({ message: `Room ${roomNumber} is full (${occupants}/${maxCapU} members). Go to Rooms section to increase capacity.` });
+      }
     }
 
     const data = { ...req.body };
     if (data.memberIdNumber) {
       const year = new Date().getFullYear();
-      const shortYear = `${String(year).slice(2)}-${String(year + 1).slice(2)}`;
-      data.memberId = `SS/${shortYear}/${String(data.memberIdNumber).padStart(3, '0')}`;
+      const shortYear = String(year).slice(2) + '-' + String(year + 1).slice(2);
+      data.memberId = 'SS/' + shortYear + '/' + String(data.memberIdNumber).padStart(3, '0');
       data.registrationYear = shortYear;
     }
-    const updated = await Member.findByIdAndUpdate(req.params.id, data, { new: true, runValidators: false, session });
-    await audit.log({ hostelId: existing.hostelId, action: 'UPDATE_MEMBER', entity: 'member', entityId: updated._id, description: `Updated ${updated.name}`, user: req.user });
-    await session.commitTransaction();
+
+    const updated = await Member.findByIdAndUpdate(req.params.id, data, { new: true, runValidators: false });
+    await audit.log({ hostelId: existing.hostelId, action: 'UPDATE_MEMBER', entity: 'member', entityId: updated._id, description: 'Updated ' + updated.name, user: req.user });
+    if (session) await session.commitTransaction();
     res.json(updated);
-  } catch(err) { await session.abortTransaction(); next(err); }
-  finally { session.endSession(); }
+  } catch(err) {
+    if (session) { try { await session.abortTransaction(); } catch(e2) {} }
+    next(err);
+  } finally {
+    if (session) { try { session.endSession(); } catch(e3) {} }
+  }
 };
 
 exports.vacate = async (req, res, next) => {
-  const session = await mongoose.startSession();
-  session.startTransaction();
+  let session = null;
+  try { session = await mongoose.startSession(); session.startTransaction(); } catch(e) { session = null; }
   try {
-    const member = await Member.findById(req.params.id).session(session);
-    if (!member) { await session.abortTransaction(); return res.status(404).json({ message: 'Member not found' }); }
+    const member = await Member.findById(req.params.id);
+    if (!member) { if (session) { try { await session.abortTransaction(); } catch(e2) {} } return res.status(404).json({ message: 'Member not found' }); }
     const obj = member.toObject(); delete obj._id;
-    const [archived] = await ArchivedMember.create([{ ...obj, originalId: member._id.toString(), vacatedOn: new Date(), vacatedReason: req.body.reason || 'Left hostel', originalCreatedAt: member.createdAt }], { session });
-    await Member.findByIdAndDelete(req.params.id).session(session);
+    const archived = await ArchivedMember.create({ ...obj, originalId: member._id.toString(), vacatedOn: new Date(), vacatedReason: req.body.reason || 'Left hostel', originalCreatedAt: member.createdAt });
+    await Member.findByIdAndDelete(req.params.id);
     await audit.log({ hostelId: member.hostelId, action: 'VACATE_MEMBER', entity: 'member', entityId: member._id, description: `${member.name} vacated Room ${member.roomNumber}. Reason: ${req.body.reason || 'Left hostel'}`, user: req.user });
     await notify.create({ hostelId: member.hostelId, type: 'member_left', title: `Member left: ${member.name}`, message: `${member.name} vacated Room ${member.roomNumber}`, memberId: member._id, memberName: member.name, roomNumber: member.roomNumber, priority: 'low' });
-    await session.commitTransaction();
+    if (session) await session.commitTransaction();
     res.json({ message: 'Vacated and archived', archived });
-  } catch(err) { await session.abortTransaction(); next(err); }
-  finally { session.endSession(); }
+  } catch(err) { if (session) { try { await session.abortTransaction(); } catch(e2) {} } next(err); }
+  finally { if (session) { try { session.endSession(); } catch(e3) {} }; }
 };
 
 exports.remove = async (req, res, next) => {

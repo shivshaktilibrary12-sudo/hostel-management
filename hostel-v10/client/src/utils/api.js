@@ -31,6 +31,7 @@ export const authAPI = {
   changePassword: (data)  => api.post('/auth/change-password', data),
   getUsers: ()            => api.get('/auth/users'),
   createUser: (data)      => api.post('/auth/users', data),
+  createManager: (data)   => api.post('/auth/users', data),  // alias for createUser
   toggleUser: (id)        => api.put(`/auth/users/${id}/toggle`),
   deleteUser: (id)        => api.delete(`/auth/users/${id}`),
   getUserActivity: (id)   => api.get(`/auth/users/${id}/activity`),
@@ -47,8 +48,10 @@ export const hostelAPI = {
 };
 
 export const roomsAPI = {
-  getAll: (params) => api.get('/rooms', { params }),
-  getOne: (n)      => api.get(`/rooms/${n}`),
+  getAll:      (params) => api.get('/rooms', { params }),
+  getOne:      (n)      => api.get(`/rooms/${n}`),
+  update:      (n, data)=> api.put(`/rooms/${n}`, data),
+  updateAll:   (rooms)  => api.put('/rooms', { rooms }),
 };
 
 export const membersAPI = {
@@ -112,3 +115,59 @@ export const syncAPI = {
 };
 
 export default api;
+
+// ── WhatsApp Messaging ────────────────────────────────────────────────────────
+export const whatsapp = {
+  sendReceipt: (mobile, receipt) => {
+    const num = `91${String(mobile).replace(/\D/g,'').replace(/^91/,'')}`;
+    const lines = [
+      `🏠 *HOSTEL RECEIPT*`,`━━━━━━━━━━━━━━━━━━`,
+      `📋 Bill No: ${receipt.billNumber||receipt.receiptNumber}`,
+      `📅 Date: ${new Date(receipt.receiptDate).toLocaleDateString('en-IN')}`,``,
+      `👤 Name: ${receipt.memberName}`,`🚪 Room No: ${receipt.roomNumber}`,
+      `💳 Type: ${(receipt.packageName||'').toUpperCase()}`,``,
+      `💰 Amount: ₹${receipt.totalAmount}`,
+      receipt.amountInWords ? `   (${receipt.amountInWords})` : '',
+      `💵 Mode: ${(receipt.modeOfPayment||'').toUpperCase()}`,
+      receipt.notes ? `📝 Notes: ${receipt.notes}` : '',``,`✅ Payment received. Thank you!`,
+    ].filter(Boolean).join('\n');
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(lines)}`, '_blank');
+  },
+  sendFinalBill: (mobile, memberName, roomNo, grandTotal, breakdown) => {
+    const num = `91${String(mobile).replace(/\D/g,'').replace(/^91/,'')}`;
+    const lines = [
+      `🏠 *FINAL BILLING STATEMENT*`,`━━━━━━━━━━━━━━━━━━`,
+      `👤 ${memberName}`,`🚪 Room No: ${roomNo}`,``,
+      `📊 *Breakdown:*`,
+      breakdown.rent      ? `  Rent:     ₹${breakdown.rent}`      : '',
+      breakdown.advance   ? `  Advance:  ₹${breakdown.advance}`   : '',
+      breakdown.electric  ? `  Electric: ₹${breakdown.electric}`  : '',
+      breakdown.other     ? `  Other:    ₹${breakdown.other}`     : '',
+      ``,`💰 *Grand Total: ₹${grandTotal}*`,``,
+      `Please settle all dues before vacating.`,`Thank you 🙏`,
+    ].filter(Boolean).join('\n');
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(lines)}`, '_blank');
+  },
+  sendReminder: (mobile, name, roomNo, amount, type = 'rent') => {
+    const num = `91${String(mobile).replace(/\D/g,'').replace(/^91/,'')}`;
+    const today = new Date().toLocaleDateString('en-IN', { day:'2-digit', month:'long', year:'numeric' });
+    const msg = [
+      `🏠 *HOSTEL PAYMENT REMINDER*`,
+      `━━━━━━━━━━━━━━━━━━`,
+      `📅 Date: ${today}`,``,
+      `Dear *${name}*,`,``,
+      `This is a friendly reminder that your *${type.toUpperCase()}* payment is pending.`,``,
+      amount ? `💰 Amount Due: *₹${Number(amount).toLocaleString('en-IN')}*` : '',
+      `🚪 Room No: *${roomNo}*`,``,
+      `Please clear your dues at the earliest to avoid any inconvenience.`,``,
+      `⚠️ Late payment attracts a fine of ₹50/- per day.`,``,
+      `Thank you 🙏`,
+      `— Hostel Management`,
+    ].filter(Boolean).join('\n');
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(msg)}`, '_blank');
+  },
+  sendCustom: (mobile, message) => {
+    const num = `91${String(mobile).replace(/\D/g,'').replace(/^91/,'')}`;
+    window.open(`https://wa.me/${num}?text=${encodeURIComponent(message)}`, '_blank');
+  },
+};  

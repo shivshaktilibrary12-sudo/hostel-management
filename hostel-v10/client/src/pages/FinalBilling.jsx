@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { membersAPI, receiptsAPI, electricAPI, whatsapp as wa } from '../utils/api';
+import { membersAPI, receiptsAPI, electricAPI, roomsAPI, whatsapp as wa } from '../utils/api';
 
 function numberToWords(num) {
   const ones = ['','One','Two','Three','Four','Five','Six','Seven','Eight','Nine','Ten','Eleven','Twelve','Thirteen','Fourteen','Fifteen','Sixteen','Seventeen','Eighteen','Nineteen'];
@@ -21,6 +21,7 @@ export default function FinalBilling() {
   const [roomMembers,  setRoomMembers]  = useState([]);
   const [roomReceipts, setRoomReceipts] = useState([]);
   const [roomElectric, setRoomElectric] = useState([]);
+  const [roomConfig,   setRoomConfig]   = useState(null); // fixed rent/advance from Room section
   const printRef = useRef();
 
   useEffect(() => {
@@ -30,10 +31,12 @@ export default function FinalBilling() {
   }, []);
 
   useEffect(() => {
-    if (!selectedRoom) { setRoomMembers([]); setRoomReceipts([]); setRoomElectric([]); return; }
+    if (!selectedRoom) { setRoomMembers([]); setRoomReceipts([]); setRoomElectric([]); setRoomConfig(null); return; }
     setRoomMembers(members.filter(m => String(m.roomNumber) === selectedRoom && m.isActive !== false));
     setRoomReceipts(receipts.filter(r => String(r.roomNumber) === selectedRoom).sort((a,b) => new Date(a.receiptDate)-new Date(b.receiptDate)));
     setRoomElectric(electric.filter(r => String(r.roomNumber) === selectedRoom).sort((a,b) => a.year-b.year||a.month-b.month));
+    // Fetch fixed room config
+    roomsAPI.getOne(selectedRoom).then(r => setRoomConfig(r.data)).catch(() => setRoomConfig(null));
   }, [selectedRoom, members, receipts, electric]);
 
   const rentReceipts     = roomReceipts.filter(r => r.paymentType==='rent'     || r.packageName==='rent');
@@ -46,6 +49,14 @@ export default function FinalBilling() {
   const totalElectricBill= roomElectric.reduce((s,r) => s+(r.totalAmount||0), 0);
   const totalOtherPaid   = otherReceipts.reduce((s,r) => s+(r.totalAmount||0), 0);
   const grandTotal       = totalRentPaid + totalAdvancePaid + totalElectricBill + totalOtherPaid;
+
+  // From room config (fixed values set in Rooms section)
+  const fixedRent        = roomConfig?.rent    || 0;
+  const fixedAdvance     = roomConfig?.advance || 0;
+  // Rent due = fixed rent × months occupied (approx from receipts count) minus paid
+  const rentDue          = Math.max(0, fixedRent - totalRentPaid);
+  // Advance balance = fixed advance minus any advance receipts created
+  const advanceBalance   = Math.max(0, fixedAdvance - totalAdvancePaid);
 
   const doPrint = () => {
     const w = window.open('','_blank');
@@ -117,6 +128,23 @@ export default function FinalBilling() {
           )}
         </div>
       </div>
+
+      {/* Room Config Info */}
+      {selectedRoom && roomConfig && (
+        <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12,marginBottom:16}}>
+          {[
+            {label:'Fixed Monthly Rent',   value:`₹${fixedRent.toLocaleString('en-IN')}`,     color:'var(--accent)',  icon:'🏷️'},
+            {label:'Fixed Advance',        value:`₹${fixedAdvance.toLocaleString('en-IN')}`,   color:'var(--info)',    icon:'💵'},
+            {label:'Advance Paid So Far',  value:`₹${totalAdvancePaid.toLocaleString('en-IN')}`,color:'var(--success)',icon:'✅'},
+            {label:'Advance Balance Due',  value:`₹${advanceBalance.toLocaleString('en-IN')}`,  color: advanceBalance>0?'var(--danger)':'var(--success)', icon:'⚖️'},
+          ].map((c,i)=>(
+            <div key={i} className="card" style={{padding:'12px 14px'}}>
+              <div style={{fontSize:'0.68rem',color:'var(--text3)',textTransform:'uppercase',letterSpacing:'0.07em',marginBottom:4}}>{c.icon} {c.label}</div>
+              <div style={{fontFamily:'Rajdhani',fontSize:'1.3rem',fontWeight:700,color:c.color}}>{c.value}</div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {!selectedRoom ? (
         <div className="card"><div className="empty-state"><div className="empty-icon">🧾</div><p>Select a room to view its final billing summary</p></div></div>
