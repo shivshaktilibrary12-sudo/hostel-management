@@ -11,14 +11,5 @@ services:
         value: production
       - key: CI
         value: false
-      - key: MONGODB_URI
-        sync: false
-      - key: JWT_SECRET
-        generateValue: true
       - key: PORT
         value: 10000
-      - key: RENDER_EXTERNAL_URL
-        fromService:
-          type: web
-          name: hostel-management
-          property: host

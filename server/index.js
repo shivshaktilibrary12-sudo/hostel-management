@@ -118,17 +118,18 @@ app.listen(PORT, () => {
   logger.info(`Mode: ${process.env.NODE_ENV || 'development'}`);
 
   // ── Keep-Alive Ping (prevents Render free tier sleep) ────────────────────
-  // Pings the server every 10 minutes so it never goes idle
-  if (process.env.NODE_ENV === 'production' && process.env.RENDER_EXTERNAL_URL) {
+  if (process.env.NODE_ENV === 'production') {
     const https = require('https');
-    const pingUrl = process.env.RENDER_EXTERNAL_URL + '/api/health';
+    // Use RENDER_EXTERNAL_URL env var or fall back to known URL
+    const appUrl = process.env.RENDER_EXTERNAL_URL || 'hostel-management-rjka.onrender.com';
+    const cleanUrl = appUrl.replace(/^https?:\/\//, '');
     setInterval(() => {
-      https.get(pingUrl, (res) => {
+      https.get({ host: cleanUrl, path: '/api/health', timeout: 5000 }, (res) => {
         logger.debug(`Keep-alive ping: ${res.statusCode}`);
-      }).on('error', (e) => {
-        logger.debug('Keep-alive ping failed (non-critical):', e.message);
+      }).on('error', () => {
+        // Non-critical — server is already running
       });
     }, 10 * 60 * 1000); // every 10 minutes
-    logger.info('Keep-alive ping scheduled every 10 minutes');
+    logger.info(`Keep-alive active — pinging ${cleanUrl} every 10 min`);
   }
-}); 
+});
