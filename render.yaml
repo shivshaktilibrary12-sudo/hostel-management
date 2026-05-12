@@ -17,3 +17,8 @@ services:
         generateValue: true
       - key: PORT
         value: 10000
+      - key: RENDER_EXTERNAL_URL
+        fromService:
+          type: web
+          name: hostel-management
+          property: host
