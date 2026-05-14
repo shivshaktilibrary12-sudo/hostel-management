@@ -437,39 +437,107 @@ export default function Members() {
 }
 
 function MemberPrintCard({ member }) {
-  const row = (label, value) => (<div style={{display:'flex',borderBottom:'1px solid #ddd',padding:'5px 0',fontSize:'13px',gap:8}}><span style={{minWidth:200,color:'#555',fontWeight:600}}>{label}</span><span style={{color:'#111'}}>{value||'—'}</span></div>);
+  const row = (label, value) => (
+    <div style={{display:'flex',borderBottom:'1px solid #eee',padding:'6px 0',fontSize:'13px',gap:8}}>
+      <span style={{minWidth:210,color:'#555',fontWeight:600,flexShrink:0}}>{label}</span>
+      <span style={{color:'#111'}}>{value||'—'}</span>
+    </div>
+  );
+  const fmtDate = (d) => d ? new Date(d).toLocaleDateString('en-IN',{day:'2-digit',month:'long',year:'numeric'}) : '—';
+
   return (
     <div style={{fontFamily:'"Noto Sans","Noto Sans Devanagari",sans-serif',color:'#111',padding:'20px',background:'white'}}>
-      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:16,borderBottom:'2px solid #111',paddingBottom:12}}>
+
+      {/* ── Top header: Title + Photo ───────────────────────────────────── */}
+      <div style={{display:'flex',justifyContent:'space-between',alignItems:'flex-start',marginBottom:10,paddingBottom:10,borderBottom:'2px solid #111'}}>
         <div>
-          <div style={{fontSize:'1.4rem',fontWeight:700,letterSpacing:1}}>HOSTEL MANAGER</div>
-          <div style={{fontSize:'0.8rem',color:'#666',marginTop:2}}>किरायेदार पंजीकरण फॉर्म</div>
-          <div style={{marginTop:8,fontSize:'12px'}}><strong>Member ID:</strong> {member.memberId||'—'} &nbsp;|&nbsp; <strong>Admission:</strong> {member.admissionDate ? new Date(member.admissionDate).toLocaleDateString('en-IN') : '—'}</div>
+          <div style={{fontSize:'1.5rem',fontWeight:700,letterSpacing:1}}>HOSTEL MANAGER</div>
+          <div style={{fontSize:'0.78rem',color:'#666',marginTop:2,letterSpacing:'0.05em'}}>किरायेदार पंजीकरण फॉर्म / Member Registration Form</div>
         </div>
-        <div style={{width:100,height:120,border:'2px dashed #999',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',color:'#aaa',fontSize:'11px',textAlign:'center',borderRadius:4}}>
-          <div style={{fontSize:'24px'}}>📷</div><div>Paste Photo</div>
+        <div style={{width:90,height:110,border:'2px dashed #999',display:'flex',alignItems:'center',justifyContent:'center',flexDirection:'column',color:'#aaa',fontSize:'10px',textAlign:'center',borderRadius:4,flexShrink:0,marginLeft:12}}>
+          <div style={{fontSize:'22px'}}>📷</div><div>Paste Photo</div>
         </div>
+      </div>
+
+      {/* ── KEY INFO BAR: Room + Due Date + Member ID + Admission Date ──── */}
+      <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr 1fr',gap:0,marginBottom:14,border:'2px solid #111',borderRadius:6,overflow:'hidden'}}>
+        <div style={{padding:'10px 12px',borderRight:'1px solid #ddd',background:'#f8f8f8'}}>
+          <div style={{fontSize:'10px',color:'#888',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:3}}>Room No.</div>
+          <div style={{fontSize:'1.6rem',fontWeight:900,color:'#111',fontFamily:'Rajdhani,sans-serif',letterSpacing:1}}>
+            {member.roomNumber ? `R${member.roomNumber}` : '—'}
+          </div>
+        </div>
+        <div style={{padding:'10px 12px',borderRight:'1px solid #ddd',background:'#f8f8f8'}}>
+          <div style={{fontSize:'10px',color:'#888',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:3}}>Due Date</div>
+          <div style={{fontSize:'1rem',fontWeight:700,color:member.roomLeavingDate ? '#c00' : '#aaa'}}>
+            {member.roomLeavingDate ? fmtDate(member.roomLeavingDate) : '—'}
+          </div>
+        </div>
+        <div style={{padding:'10px 12px',borderRight:'1px solid #ddd',background:'#fff9e6'}}>
+          <div style={{fontSize:'10px',color:'#888',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:3}}>Member ID</div>
+          <div style={{fontSize:'1.3rem',fontWeight:900,color:'#b8860b',fontFamily:'monospace',letterSpacing:1}}>
+            {member.memberId || '—'}
+          </div>
+        </div>
+        <div style={{padding:'10px 12px',background:'#fff9e6'}}>
+          <div style={{fontSize:'10px',color:'#888',textTransform:'uppercase',letterSpacing:'0.08em',marginBottom:3}}>Admission Date</div>
+          <div style={{fontSize:'1rem',fontWeight:700,color:'#b8860b'}}>
+            {member.admissionDate ? fmtDate(member.admissionDate) : '—'}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Personal Details ────────────────────────────────────────────── */}
+      <div style={{fontWeight:700,fontSize:'11px',textTransform:'uppercase',letterSpacing:'0.08em',color:'#444',margin:'10px 0 6px',paddingBottom:3,borderBottom:'1px solid #ddd'}}>
+        Personal Information
       </div>
       {row('Name / नाम', member.name)}
       {row('Mobile / मोबाइल', member.mobileNo)}
       {row('Aadhar / आधार', member.aadharNumber)}
       {row('Occupation / व्यवसाय', member.studentOccupation)}
-      {row('Permanent Address', member.permanentAddress)}
-      {row("Father's Name", member.fathersName)}
+      {row('Permanent Address / स्थायी पता', member.permanentAddress)}
+
+      <div style={{fontWeight:700,fontSize:'11px',textTransform:'uppercase',letterSpacing:'0.08em',color:'#444',margin:'10px 0 6px',paddingBottom:3,borderBottom:'1px solid #ddd'}}>
+        Father's Details / पिता की जानकारी
+      </div>
+      {row("Father's Name / पिता का नाम", member.fathersName)}
       {row("Father's Mobile", member.fathersMobileNo)}
       {row("Father's Occupation", member.fathersOccupation)}
-      {row('Permanent Address Relative Name', member.permanentAddressRelativeName)}
-      {row('Permanent Address Relative Mobile', member.permanentAddressRelativeMobile)}
-      {row('Permanent Address Relative Address', member.permanentAddressRelativeAddress)}
-      {row('Local Relative Name', member.localRelativeName)}
-      {row('Local Relative Mobile', member.localRelativeMobile)}
-      {row('Local Relative Address', member.localRelativeAddress)}
-      {row('Room Number', member.roomNumber ? `Room ${member.roomNumber}` : '—')}
-      {row('Monthly Rent', member.rent ? `₹${member.rent}` : '—')}
-      {row('Police Form', member.policeFormVerified ? 'Verified ✓' : 'Pending')}
-      <div style={{display:'flex',justifyContent:'space-between',marginTop:48,paddingTop:16,borderTop:'1px solid #ddd'}}>
-        <div style={{textAlign:'center',width:'45%'}}><div style={{borderTop:'1px solid #333',paddingTop:6,fontSize:'12px',color:'#555'}}>किरायेदार के हस्ताक्षर<br/>(Tenant Signature)</div></div>
-        <div style={{textAlign:'center',width:'45%'}}><div style={{borderTop:'1px solid #333',paddingTop:6,fontSize:'12px',color:'#555'}}>मकान मालिक के हस्ताक्षर<br/>(Owner Signature)</div></div>
+
+      <div style={{fontWeight:700,fontSize:'11px',textTransform:'uppercase',letterSpacing:'0.08em',color:'#444',margin:'10px 0 6px',paddingBottom:3,borderBottom:'1px solid #ddd'}}>
+        Permanent Address Relative / स्थायी पते का परिचित
+      </div>
+      {row('Name', member.permanentAddressRelativeName)}
+      {row('Mobile', member.permanentAddressRelativeMobile)}
+      {row('Address', member.permanentAddressRelativeAddress)}
+
+      <div style={{fontWeight:700,fontSize:'11px',textTransform:'uppercase',letterSpacing:'0.08em',color:'#444',margin:'10px 0 6px',paddingBottom:3,borderBottom:'1px solid #ddd'}}>
+        Local Relative / स्थानीय परिचित
+      </div>
+      {row('Name', member.localRelativeName)}
+      {row('Mobile', member.localRelativeMobile)}
+      {row('Address', member.localRelativeAddress)}
+
+      <div style={{fontWeight:700,fontSize:'11px',textTransform:'uppercase',letterSpacing:'0.08em',color:'#444',margin:'10px 0 6px',paddingBottom:3,borderBottom:'1px solid #ddd'}}>
+        Room Details / कमरे की जानकारी
+      </div>
+      {row('Monthly Rent / किराया', member.rent ? `₹${Number(member.rent).toLocaleString('en-IN')}` : '—')}
+      {row('Advance / एडवांस', member.advance ? `₹${Number(member.advance).toLocaleString('en-IN')}` : '—')}
+      {row('Join Date / प्रवेश दिनांक', member.roomJoinDate ? fmtDate(member.roomJoinDate) : '—')}
+      {row('Police Form / पुलिस फॉर्म', member.policeFormVerified ? 'Verified ✓' : 'Pending')}
+
+      {/* ── Signature Footer ───────────────────────────────────────────── */}
+      <div style={{display:'flex',justifyContent:'space-between',marginTop:40,paddingTop:16,borderTop:'1px solid #ddd'}}>
+        <div style={{textAlign:'center',width:'45%'}}>
+          <div style={{borderTop:'1px solid #333',paddingTop:8,fontSize:'12px',color:'#555'}}>
+            किरायेदार के हस्ताक्षर<br/><span style={{fontSize:'11px'}}>(Tenant Signature)</span>
+          </div>
+        </div>
+        <div style={{textAlign:'center',width:'45%'}}>
+          <div style={{borderTop:'1px solid #333',paddingTop:8,fontSize:'12px',color:'#555'}}>
+            मकान मालिक के हस्ताक्षर<br/><span style={{fontSize:'11px'}}>(Owner Signature)</span>
+          </div>
+        </div>
       </div>
     </div>
   );
