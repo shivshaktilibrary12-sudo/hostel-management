@@ -21,30 +21,33 @@ import DuesAndPayments from './pages/DuesAndPayments';
 import { authAPI, hostelAPI, notificationsAPI } from './utils/api';
 
 const OWNER_NAV = [
-  { path: '/', label: 'Dashboard', icon: '📊' },
-  { path: '/hostels', label: 'Hostels', icon: '🏠' },
-  { path: '/rooms', label: 'Rooms', icon: '🚪' },
-  { path: '/members', label: 'Members', icon: '👥' },
-  { path: '/room-details', label: 'Room Details', icon: '📋' },
-  { path: '/receipts', label: 'Receipts', icon: '🧾' },
-  { path: '/final-billing', label: 'Final Billing', icon: '📑' },
-  { path: '/electric', label: 'Electric', icon: '⚡' },
-  { path: '/police', label: 'Police Form', icon: '🚔' },
-  { path: '/reports', label: 'Reports & Export', icon: '📈' },
-  { path: '/salary', label: 'Salary', icon: '💰' },
-  { path: '/audit', label: 'Audit Log', icon: '🔍' },
-  { path: '/managers', label: 'Managers', icon: '👨‍💼' },
+  { path: '/',             label: 'Dashboard',       icon: '📊' },
+  { path: '/hostels',      label: 'Hostels',          icon: '🏠' },
+  { path: '/rooms',        label: 'Rooms',            icon: '🚪' },
+  { path: '/members',      label: 'Members',          icon: '👥' },
+  { path: '/room-details', label: 'Room Details',     icon: '📋' },
+  { path: '/receipts',     label: 'Receipts',         icon: '🧾' },
+  { path: '/final-billing',label: 'Final Billing',    icon: '📑' },
+  { path: '/electric',     label: 'Electric',         icon: '⚡' },
+  { path: '/dues',         label: 'Dues & Payments',  icon: '⚠️' },
+  { path: '/police',       label: 'Police Form',      icon: '🚔' },
+  { path: '/reports',      label: 'Reports & Export', icon: '📈' },
+  { path: '/salary',       label: 'Salary',           icon: '💰' },
+  { path: '/audit',        label: 'Audit Log',        icon: '🔍' },
+  { path: '/managers',     label: 'Managers',         icon: '👨‍💼' },
 ];
+
 const MANAGER_NAV = [
-  { path: '/', label: 'Dashboard', icon: '📊' },
-  { path: '/rooms', label: 'Rooms', icon: '🚪' },
-  { path: '/members', label: 'Members', icon: '👥' },
-  { path: '/room-details', label: 'Room Details', icon: '📋' },
-  { path: '/receipts', label: 'Receipts', icon: '🧾' },
-  { path: '/final-billing', label: 'Final Billing', icon: '📑' },
-  { path: '/electric', label: 'Electric', icon: '⚡' },
-  { path: '/police', label: 'Police Form', icon: '🚔' },
-  { path: '/managers', label: 'My Account', icon: '🔑' },
+  { path: '/',             label: 'Dashboard',      icon: '📊' },
+  { path: '/rooms',        label: 'Rooms',          icon: '🚪' },
+  { path: '/members',      label: 'Members',        icon: '👥' },
+  { path: '/room-details', label: 'Room Details',   icon: '📋' },
+  { path: '/receipts',     label: 'Receipts',       icon: '🧾' },
+  { path: '/final-billing',label: 'Final Billing',  icon: '📑' },
+  { path: '/electric',     label: 'Electric',       icon: '⚡' },
+  { path: '/dues',         label: 'Dues & Payments',icon: '⚠️' },
+  { path: '/police',       label: 'Police Form',    icon: '🚔' },
+  { path: '/managers',     label: 'My Account',     icon: '🔑' },
 ];
 
 function Sidebar({ user, activeHostel, unreadCount, sidebarOpen, onClose, onLogout, onSwitchRole, onHostelSwitch }) {
@@ -215,7 +218,6 @@ function AppShell() {
     if (reason === 'inactivity') toast('Logged out due to 2 hours of inactivity', 'error');
   }, [toast]);
 
-  // Auto-logout after 2 hours inactivity
   useAutoLogout(doLogout);
 
   const loadHostel = useCallback(async () => {
@@ -243,8 +245,8 @@ function AppShell() {
     return () => clearInterval(iv);
   }, [user, loadHostel, pollNotifications]);
 
-  const handleLogin   = (u) => setUser(u);
-  const handleSwitchRole = (newUser) => { setUser(newUser); loadHostel(); };
+  const handleLogin       = (u) => setUser(u);
+  const handleSwitchRole  = (newUser) => { setUser(newUser); loadHostel(); };
   const handleHostelSwitch = (h) => setActiveHostel(h);
 
   if (!user) return <Login onLogin={handleLogin} />;
@@ -275,6 +277,7 @@ function AppShell() {
             <Route path="/receipts"      element={<Receipts />} />
             <Route path="/final-billing" element={<FinalBilling />} />
             <Route path="/electric"      element={<Electric />} />
+            <Route path="/dues"          element={<DuesAndPayments />} />
             <Route path="/police"        element={<PoliceVerification />} />
             <Route path="/reports"       element={user.role==='owner' ? <Reports /> : <Navigate to="/"/>} />
             <Route path="/salary"        element={user.role==='owner' ? <Salary />  : <Navigate to="/"/>} />
